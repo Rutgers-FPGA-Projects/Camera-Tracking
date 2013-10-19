@@ -1,0 +1,4 @@
+db/*
+incremental_db/*
+*.baK
+output_files/*
