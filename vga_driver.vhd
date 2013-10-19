@@ -65,8 +65,7 @@ use ieee.std_logic_1164.all;
 entity vga_driver is 
 	port(	VGA_R,VGA_G,VGA_B: out STD_logic_vector(7 downto 0);
 			VGA_CLK,VGA_BLANK_N,VGA_HS,VGA_VS,VGA_SYNC_N: out STD_logic;
-			CLOCK_50: in STD_logic;
-			GPIO: out STD_logic_vector(4 downto 0));
+			CLOCK_IN: in STD_logic);
 end;
 
 architecture behavior of vga_driver is 
@@ -89,13 +88,13 @@ architecture behavior of vga_driver is
 begin 
 	
 	----- VGA connections
-	VGA_CLK <= my_vga_clk; --clk_25;
+	VGA_CLK <= CLOCK_IN; --clk_25;
 	VGA_SYNC_N <= '0';
 	
 	-- generate h sync
-	process (my_vga_clk)
+	process (CLOCK_IN)
 	begin
-		if(rising_edge(my_vga_clk)) then
+		if(rising_edge(CLOCK_IN)) then
 			if(h_count >= Hsync + HBackPorch + Hdata + HFrontPorch) then
 				h_count <= 0;
 			else
@@ -146,9 +145,9 @@ begin
 	end process;
 	
 	-- generate v sync
-	process (my_vga_clk )
+	process (CLOCK_IN )
 	begin
-		if(rising_edge(my_vga_clk)) then
+		if(rising_edge(CLOCK_IN)) then
 			if(h_count = 0) then
 				if(v_count < VSync + VBackPorch + VData + VFrontPorch)then
 					v_count <= v_count + 1;
@@ -167,9 +166,9 @@ begin
 	end process;
 	
 	-- use v count
-	process (my_vga_clk)
+	process (CLOCK_IN)
 	begin
-		if(rising_edge(my_vga_clk))then
+		if(rising_edge(CLOCK_IN))then
 			if(v_count < Vsync) then
 				VGA_VS <= '0';
 			else

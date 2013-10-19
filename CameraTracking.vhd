@@ -32,6 +32,19 @@ architecture behavior of CameraTracking is
 			locked		: OUT STD_LOGIC);
 	end component;	
 
+	component
+		vga_driver port(
+			VGA_R: 	out STD_logic_vector(7 downto 0);	-- Red Value sent to Hardware
+			VGA_G: 	out STD_logic_vector(7 downto 0);	-- Green Value sent to Hardware
+			VGA_B: 	out STD_logic_vector(7 downto 0);	-- Blue Value sent to Hardware
+			VGA_CLK: out STD_logic;				-- used by VGA DAC
+			VGA_BLANK_N: out STD_logic;		-- Sent to VGA DAC to indicate blanking
+			VGA_HS: 	out STD_logic;				-- The Horizontial Syc  
+			VGA_VS: 	out STD_logic;				-- Vertical Syc
+			VGA_SYNC_N: out STD_logic;			
+			CLOCK_IN: in STD_logic);			-- The clock used by the VGA driver; This must be the correct frequency for the resolution
+	end component;
+
 	-- used for PLL
 	signal clock_106MHz: STD_logic; 
 	signal clock_50MHz: STD_LOGIC;
@@ -49,7 +62,22 @@ begin
 		locked	 => locked
 	);
 	
+	LEDG(0) <= rst; --clock debuging 
+	LEDG(1) <= locked;
 	
+	
+	
+	vga_inst: vga_driver port map(
+		VGA_R => VGA_R,
+		VGA_G => VGA_G,
+		VGA_B => VGA_B,
+		VGA_CLK => VGA_CLK,
+		VGA_BLANK_N => VGA_BLANK_N,
+		VGA_HS => VGA_HS,
+		VGA_VS => VGA_VS,
+		VGA_SYNC_N => VGA_SYNC_N,
+		CLOCK_IN => clock_106MHz
+		);
 	
 	
 	
