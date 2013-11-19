@@ -1,126 +1,49 @@
-library ieee;
-use ieee.std_logic_1164;
+LIBRARY ieee; -- Import logic primitives
+USE ieee.std_logic_1164.all;
 
-entity ir_receiver is 
-  port ( IRDA_RXD: in std_logic;
-			reset: in std_logic;
-			clk_50: in std_logic;
-			--When the IR receiver on the FPGA board receive the signal, LEDR will light
-			LEDR: out std_logic_vector(1 downto 0);
-			--Display the information about CUSTOM CODE bits __HEX7-HEX4
-			--and KEY CODE bits __HEX3-HEX0
-			oData_Ready: out std_logic;
-			oData: out std_logic_vector(31 downto 0)
-			);
+entity IR is 
+  port(
+	IRDA_RXD: in std_logic;
+	key: in std_logic_vector(0 downto 0);
+	CLOCK_50	:IN STD_LOGIC;
+	HEX0, HEX1, HEX2, HEX3, HEX4, HEX5: OUT STD_LOGIC_VECTOR(0 TO 6)
+	);
 end entity;
 
-architecture behaviour of ir_receiver is
---All the constant I will use:
-	constant data2idleThreshold: integer:=262143; --5.24ms
-	constant idle2guidanceThreshold: integer:=230000; --4.6ms
-	constant guidance2datareadThreshold: integer:=210000; --4.2ms
---All the signals I need to use:
-	type count_state is (idle, guidance, dataread);--Once detect the LEAD CODE transfer idle to guidance, Detect the CUSTOM CODE transfer guidance to dataread.
-	signal state : count_state;
-	--The signals to determine the time to switch from present_state to next_state
-	signal idle_count_flag: std_logic;
-	signal guidance_count_flag: std_logic;
-	signal dataread_count_flag: std_logic;
+architecture behaviour of IR is
+	component ir_receiver is 
+		port ( 
+			iIRDA: in std_logic;
+			reset: in std_logic;
+			clk_50: in std_logic;
+			--Display the information about CUSTOM CODE bits __HEX7-HEX4
+			--and KEY CODE bits __HEX3-HEX0
+			oData: out std_logic_vector(31 downto 0)
+			);
+	end component;
 	
-	signal idle_count: integer;
-	signal guidance_count: integer;
-	signal dataread_count: integer;
-----------------------------------------
-	signal data_ready_flag: std_logic;
-	signal data: std_logic_vector(31 downto 0);
-	signal data_buffer: std_logic_vector(31 downto 0);
+	component hexDisplay is 
+                port (S: in std_logic_vector(3 downto 0);  -- S is an intermediate signal (NOT A PHYSICAL INPUT)
+                      H: out std_logic_vector(0 to 6));           -- Storage signal for result
+	end component; 
 	
+	signal display5, display4, display3, display2, display1, display0: std_logic_vector(0 to 6);
+	signal iData: std_logic_vector(31 downto 0); 
 begin 
---Count the idle_count preparing for state changes from idle to guidance
-	process(clk_50, reset)
-	begin
-		if (reset='0') then 
-			idle_count<=0;
-		elsif(rising_edge(clk_50) and idle_count_flag='1') then 
-			idle_count<=idle_count+1;
-		end if;
-	end process;
+	I_r: ir_receiver port map(IRDA_RXD,key(0),CLOCK_50,iData);
 	
-	process(clk_50, reset)
-	begin
-		if (reset='0') then 
-			idle_count_flag<='0';
-		elsif(rising_edge(clk_50) and state=idle and IRDA_RXD='0') then 
-			idle_count_flag<='1';
-		end if;
-	end process;
+	h0: hexDisplay port map (iData(31 downto 28), display0);
+	h1: hexDisplay port map (iData(27 downto 24), display1);
+	h2: hexDisplay port map (iData(23 downto 20), display2);
+	h3: hexDisplay port map (iData(19 downto 16), display3);
+	h4: hexDisplay port map (iData(15 downto 12), display4);
+	h5: hexDisplay port map (iData(11 downto 8), display5);
 	
---Count the guidance_count preparing for state changes from guidance to dataread
-	process(clk_50, reset)
-	begin
-		if (reset='0') then 
-			guidance_count<=0;
-		elsif(rising_edge(clk_50) and guidance_count_flag='1') then 
-			guidance_count<=guidance_count+1;
-		end if;
-	end process;
-	
-	process(clk_50, reset)
-	begin
-		if (reset='0') then 
-			guidance_count_flag<='0';
-		elsif(rising_edge(clk_50) and state=guidance and IRDA_RXD='1') then 
-			guidance_count_flag<='1';
-		end if;
-	end process;
-	
---Count the dataread_count preparing for state changes from dataread to idle
-	process(clk_50, reset)
-	begin
-		if (reset='0') then 
-			dataread_count<=0;
-		elsif(rising_edge(clk_50) and guidance_count_flag='1') then 
-			dataread_count<=dataread_count+1;
-		end if;
-	end process;
-	
-	process(clk_50, reset)
-	begin
-		if (reset='0') then 
-			dataread_count_flag<='0';
-		elsif(rising_edge(clk_50) and state=dataread and IRDA_RXD='1') then 
-			dataread_count_flag<='1';
-		end if;
-	end process;
-	
-	process(state, reset, clk_50)
-	begin 
-		if (reset='0') then 
-			state<=idle;
-		elsif (rising_edge(clk_50)) then
-			case state is
-			when 
-				idle=>
-					if (idle_count>idle2guidanceThreshold) then 
-						state<=guidance;
-					end if;
-			when 
-				guidance=>
-					if (guidance_count>guidance2datareadThreshold) then
-						state<=dataread;
-					end if;
-			when 
-				dataread=>
-					if (dataread>data2idleThreshold) then 
-						state<=idle;
-					end if;
-			end case;
-		end if;
-	end process;
-		
-	
+	HEX0<=display0;
+	HEX1<=display1;
+	HEX2<=display2;
+	HEX3<=display3;
+	HEX4<=display4;
+	HEX5<=display5;
 	
 end behaviour;
-
-
-		
