@@ -15,10 +15,11 @@ entity CameraTracking is
 			VGA_CLK,VGA_BLANK_N,VGA_HS,VGA_VS,VGA_SYNC_N: out STD_logic;
 			SW: in STD_logic_vector(17 downto 0);
 			CLOCK_50: in STD_logic;
-			HEX0,HEX6,HEX7: out STD_logic_vector(6 downto 0);
 			LEDG: out STD_logic_vector(7 downto 0);
 			KEY: in STD_logic_vector(3 downto 0);
-			GPIO: out STD_logic_vector(4 downto 0));
+			GPIO: out STD_logic_vector(4 downto 0);
+			IRDA_RXD: in std_logic;
+			HEX0, HEX1, HEX2, HEX3, HEX4, HEX5: OUT STD_LOGIC_VECTOR(0 TO 6));
 end;
 
 architecture behavior of CameraTracking is 
@@ -31,7 +32,23 @@ architecture behavior of CameraTracking is
 			c1		: OUT STD_LOGIC ;
 			locked		: OUT STD_LOGIC);
 	end component;	
-
+	
+	component ir_receiver is 
+		port ( 
+			iIRDA: in std_logic;
+			reset: in std_logic;
+			clk_50: in std_logic;
+			--Display the information about CUSTOM CODE bits __HEX7-HEX4
+			--and KEY CODE bits __HEX3-HEX0
+			oData: out std_logic_vector(31 downto 0)
+			);
+	end component;
+	
+	component hexDisplay is 
+                port (S: in std_logic_vector(3 downto 0);  -- S is an intermediate signal (NOT A PHYSICAL INPUT)
+                      H: out std_logic_vector(0 to 6));           -- Storage signal for result
+	end component; 
+	
 	component
 		vga_driver port(
 			VGA_R: 	out STD_logic_vector(7 downto 0);	-- Red Value sent to Hardware
@@ -51,6 +68,11 @@ architecture behavior of CameraTracking is
 	signal locked: STD_logic;
 	signal rst: STD_LOGIC := '0';
 	
+	
+	-- used for the IR reciever and HEX displays
+	signal display5, display4, display3, display2, display1, display0: std_logic_vector(0 to 6);
+	signal iData: std_logic_vector(31 downto 0); 
+
 begin
 	
 	-- implement the clock PLL to create a 106 MHz clock
@@ -66,7 +88,6 @@ begin
 	LEDG(1) <= locked;
 	
 	
-	
 	vga_inst: vga_driver port map(
 		VGA_R => VGA_R,
 		VGA_G => VGA_G,
@@ -79,8 +100,22 @@ begin
 		CLOCK_IN => clock_106MHz
 		);
 	
+	-- Hook up the IR conections 
+	I_r: ir_receiver port map(IRDA_RXD,KEY(0),CLOCK_50,iData);
 	
+	h0: hexDisplay port map (iData(31 downto 28), display0);
+	h1: hexDisplay port map (iData(27 downto 24), display1);
+	h2: hexDisplay port map (iData(23 downto 20), display2);
+	h3: hexDisplay port map (iData(19 downto 16), display3);
+	h4: hexDisplay port map (iData(15 downto 12), display4);
+	h5: hexDisplay port map (iData(11 downto 8), display5);
 	
+	HEX0<=display0;
+	HEX1<=display1;
+	HEX2<=display2;
+	HEX3<=display3;
+	HEX4<=display4;
+	HEX5<=display5;
 	
 	
 end behavior;
