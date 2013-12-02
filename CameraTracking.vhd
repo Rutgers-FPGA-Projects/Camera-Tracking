@@ -6,6 +6,7 @@
 -- Change Log:
 
 
+
 -- Import the definitions for standard logic
 library ieee;
 use ieee.std_logic_1164.all;
@@ -15,6 +16,7 @@ entity CameraTracking is
 			VGA_CLK,VGA_BLANK_N,VGA_HS,VGA_VS,VGA_SYNC_N: out STD_logic;
 			SW: in STD_logic_vector(17 downto 0);
 			CLOCK_50: in STD_logic;
+			EXT_IO: out STD_lOGIC_VECTOR(6 downto 0);  -- this is how the pin mapping labels the external IOs
 			LEDG: out STD_logic_vector(7 downto 0);
 			KEY: in STD_logic_vector(3 downto 0);
 			GPIO: out STD_logic_vector(4 downto 0);
@@ -24,6 +26,7 @@ end;
 
 architecture behavior of CameraTracking is 
 
+	-- used for the PLL
 	component 
 		clock1 PORT(
 			areset		: IN STD_LOGIC  := '0';
@@ -32,6 +35,13 @@ architecture behavior of CameraTracking is
 			c1		: OUT STD_LOGIC ;
 			locked		: OUT STD_LOGIC);
 	end component;	
+	
+	component servo is 
+		port(clk: in STD_LOGIC;
+			Angle: in integer := 100;   -- 1.5 ms
+			servo_ctr: out STD_LOGIC
+		);
+	end component;
 	
 	component ir_receiver is 
 		port ( 
@@ -86,6 +96,20 @@ begin
 	
 	LEDG(0) <= rst; --clock debuging 
 	LEDG(1) <= locked;
+	
+	-- pan servo
+	Servo_0 : servo port map (
+		clk => clock_50MHz,
+		Angle => 100,
+		servo_ctr => EXT_IO(0)
+	);
+	
+	-- vertical servo
+	Servo_1 : servo port map (
+		clk => clock_50MHz,
+		Angle => 100,
+		servo_ctr => EXT_IO(1)
+	);
 	
 	
 	vga_inst: vga_driver port map(
