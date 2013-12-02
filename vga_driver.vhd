@@ -3,6 +3,7 @@
 -- 
 -- Change Log:
 
+-- Dec 2,  2013 => replaced direct RGB output writing with the current address
 -- Oct 18, 2013 => Continued Spliting Files
 -- Oct 13, 2013 => Split entity from test code and created a standalone entity with some documentation
 -- Oct 12, 2013 => got working entity and tested several video modes
@@ -61,25 +62,27 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
 entity vga_driver is 
-	port(	VGA_R,VGA_G,VGA_B: out STD_logic_vector(7 downto 0);
+	port(	VertAddress,HorAddress: out STD_logic_vector(9 downto 0);
+			DataValid: out STD_logic;
 			VGA_CLK,VGA_BLANK_N,VGA_HS,VGA_VS,VGA_SYNC_N: out STD_logic;
 			CLOCK_IN: in STD_logic);
 end;
 
 architecture behavior of vga_driver is 
 	
-	constant Vsync: integer := 3;
-	constant VBackPorch: integer := 28;
-	constant VData: integer := 900;
-	constant VFrontPorch: integer := 1;
+	constant Vsync: integer := 2;
+	constant VBackPorch: integer := 33;
+	constant VData: integer := 480;
+	constant VFrontPorch: integer := 10;
 	
-	constant Hsync: integer := 152;
-	constant HBackPorch: integer := 223;
-	constant HData: integer := 1440;
-	constant HFrontPorch: integer := 89;
-	
+	-- 
+	constant Hsync: integer := 96;
+	constant HBackPorch: integer := 48;
+	constant HData: integer := 640;
+	constant HFrontPorch: integer := 16;	
 	
 	signal h_count: integer := 0;
 	signal v_count: integer := 0;
@@ -88,7 +91,7 @@ architecture behavior of vga_driver is
 begin 
 	
 	----- VGA connections
-	VGA_CLK <= CLOCK_IN; --clk_25;
+	VGA_CLK <= CLOCK_IN; 
 	VGA_SYNC_N <= '0';
 	
 	-- generate h sync
@@ -112,32 +115,37 @@ begin
 					-- write the pixel
 					
 					VGA_BLANK_N <= '1';
-					
-					if(v_count > VSync + VBackPorch + VData/2)then
-						VGA_R(7 downto 0) <= B"11111111";
-					else
-						VGA_R(7 downto 0) <= B"00000000";
-					end if;
-					
-					
-					if(h_count < HSync + HBackPorch + HData/4)then
-						VGA_G(7 downto 0) <= B"11111111";
-						VGA_B(7 downto 0) <= B"00000000";
-						
-					elsif (h_count < HSync + HBackPorch + HData/2) then
-						VGA_B(7 downto 0) <= B"10000000";
-						VGA_G(7 downto 0) <= B"00000000";
-					elsif (h_count < HSync + HBackPorch + HData*3/4) then
-						VGA_B(7 downto 0) <= B"11111111";
-						VGA_G(7 downto 0) <= B"00000000";
-					else
-						VGA_G(7 downto 0) <= B"10000000";
-						VGA_B(7 downto 0) <= B"00000000";	
-					end if;
+					DataValid <= '1';
+			
+					--VertAddress <= std_logic_vector(to_integer(unsigned(h_count)  - (to_integer(unsigned(HSync)) + to_integer(unsigned(HBackPorch))) ,10));
+					VertAddress <= std_logic_vector(to_unsigned(v_count - VSync - VBackPorch,10));
+					HorAddress <= std_logic_vector(to_unsigned(h_count - HSync - HBackPorch,10));
+					--HorAddress  <= v_count - (VSync + VBackPorch);
+--					if(v_count > VSync + VBackPorch + VData/2)then
+--						VGA_R(7 downto 0) <= B"11111111";
+--					else
+--						VGA_R(7 downto 0) <= B"00000000";
+--					end if;
+--					
+--					
+--					if(h_count < HSync + HBackPorch + HData/4)then
+--						VGA_G(7 downto 0) <= B"11111111";
+--						VGA_B(7 downto 0) <= B"00000000";
+--						
+--					elsif (h_count < HSync + HBackPorch + HData/2) then
+--						VGA_B(7 downto 0) <= B"10000000";
+--						VGA_G(7 downto 0) <= B"00000000";
+--					elsif (h_count < HSync + HBackPorch + HData*3/4) then
+--						VGA_B(7 downto 0) <= B"11111111";
+--						VGA_G(7 downto 0) <= B"00000000";
+--					else
+--						VGA_G(7 downto 0) <= B"10000000";
+--						VGA_B(7 downto 0) <= B"00000000";	
+--					end if;
 					
 				else
 					VGA_BLANK_N <= '0';
-					
+					DataValid <= '0';
 				end if;
 				
 			end if;

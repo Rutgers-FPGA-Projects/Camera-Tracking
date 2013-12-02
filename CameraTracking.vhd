@@ -5,8 +5,6 @@
 
 -- Change Log:
 
-
-
 -- Import the definitions for standard logic
 library ieee;
 use ieee.std_logic_1164.all;
@@ -61,9 +59,8 @@ architecture behavior of CameraTracking is
 	
 	component
 		vga_driver port(
-			VGA_R: 	out STD_logic_vector(7 downto 0);	-- Red Value sent to Hardware
-			VGA_G: 	out STD_logic_vector(7 downto 0);	-- Green Value sent to Hardware
-			VGA_B: 	out STD_logic_vector(7 downto 0);	-- Blue Value sent to Hardware
+			VertAddress,HorAddress: out STD_logic_vector(9 downto 0);
+			DataValid: out STD_logic;
 			VGA_CLK: out STD_logic;				-- used by VGA DAC
 			VGA_BLANK_N: out STD_logic;		-- Sent to VGA DAC to indicate blanking
 			VGA_HS: 	out STD_logic;				-- The Horizontial Syc  
@@ -75,6 +72,8 @@ architecture behavior of CameraTracking is
 	-- used for PLL
 	signal clock_106MHz: STD_logic; 
 	signal clock_50MHz: STD_LOGIC;
+	signal clock_25MHz: STD_LOGIC;
+	
 	signal locked: STD_logic;
 	signal rst: STD_LOGIC := '0';
 	
@@ -82,6 +81,9 @@ architecture behavior of CameraTracking is
 	-- used for the IR reciever and HEX displays
 	signal display5, display4, display3, display2, display1, display0: std_logic_vector(0 to 6);
 	signal iData: std_logic_vector(31 downto 0); 
+	
+	signal DataValid: STD_LOGIC;
+	signal HorAddress,VertAddress: STD_LOGIC_VECTOR(9 downto 0);
 
 begin
 	
@@ -93,6 +95,14 @@ begin
 		c1	 => clock_106MHz,
 		locked	 => locked
 	);
+	
+	
+	process (clock_50MHz)
+	begin
+		if(rising_edge(clock_50MHz)) then
+			clock_25MHz <= not clock_25MHz;
+		end if;
+	end process;
 	
 	LEDG(0) <= rst; --clock debuging 
 	LEDG(1) <= locked;
@@ -113,16 +123,21 @@ begin
 	
 	
 	vga_inst: vga_driver port map(
-		VGA_R => VGA_R,
-		VGA_G => VGA_G,
-		VGA_B => VGA_B,
+		VertAddress => VertAddress,
+		HorAddress => HorAddress,
+		DataValid => DataValid,
 		VGA_CLK => VGA_CLK,
 		VGA_BLANK_N => VGA_BLANK_N,
 		VGA_HS => VGA_HS,
 		VGA_VS => VGA_VS,
 		VGA_SYNC_N => VGA_SYNC_N,
-		CLOCK_IN => clock_106MHz
+		CLOCK_IN => clock_25MHz
 		);
+	
+	VGA_R <= B"00000000";
+	VGA_G <= B"11110000";
+	VGA_B <= B"00001111";
+		
 	
 	-- Hook up the IR conections 
 	I_r: ir_receiver port map(IRDA_RXD,KEY(0),CLOCK_50,iData);
