@@ -36,13 +36,13 @@ architecture behavior of CameraTracking is
 	end component;	
 	
 	component TwoPortRam IS
-	PORT(data		: IN STD_LOGIC_VECTOR (23 DOWNTO 0);
-		rdaddress		: IN STD_LOGIC_VECTOR (18 DOWNTO 0);
+	PORT(data		: IN STD_LOGIC_VECTOR (14 DOWNTO 0);
+		rdaddress		: IN STD_LOGIC_VECTOR (16 DOWNTO 0);
 		rdclock		: IN STD_LOGIC ;
-		wraddress		: IN STD_LOGIC_VECTOR (18 DOWNTO 0);
+		wraddress		: IN STD_LOGIC_VECTOR (16 DOWNTO 0);
 		wrclock		: IN STD_LOGIC  := '1';
 		wren		: IN STD_LOGIC  := '0';
-		q		: OUT STD_LOGIC_VECTOR (23 DOWNTO 0));
+		q		: OUT STD_LOGIC_VECTOR (14 DOWNTO 0));
 	END component;
 		
 	component servo is 
@@ -59,6 +59,7 @@ architecture behavior of CameraTracking is
 			clk_50: in std_logic;
 			--Display the information about CUSTOM CODE bits __HEX7-HEX4
 			--and KEY CODE bits __HEX3-HEX0
+			data_ready : out std_logic ;
 			oData: out std_logic_vector(31 downto 0)
 			);
 	end component;
@@ -92,15 +93,16 @@ architecture behavior of CameraTracking is
 	-- used for the IR reciever and HEX displays
 	signal display5, display4, display3, display2, display1, display0: std_logic_vector(0 to 6);
 	signal iData: std_logic_vector(31 downto 0); 
+	signal IRdata_ready: STD_LOGIC;
 	
 	signal DataValid: STD_LOGIC;
 	signal VGA_HorAddress,VGA_VertAddress: STD_LOGIC_VECTOR(11 downto 0);
 	
 	
-	signal VGAMemReadAddress: STD_logic_vector(18 downto 0);
-	signal VGAMemWriteAddress: STD_logic_vector(18 downto 0);
-	signal VGAMemReadData: STD_logic_vector(23 downto 0);
-	signal VGAMemWriteData: STD_logic_vector(23 downto 0);
+	signal VGAMemReadAddress: STD_logic_vector(16 downto 0);
+	signal VGAMemWriteAddress: STD_logic_vector(16 downto 0);
+	signal VGAMemReadData: STD_logic_vector(14 downto 0);
+	signal VGAMemWriteData: STD_logic_vector(14 downto 0);
 
 begin
 	
@@ -155,29 +157,33 @@ begin
 	
 	
 	TwoPortRam_inst : TwoPortRam PORT MAP (
-		data	 => VGAMemReadData,
+		data	 => VGAMemWriteData,
 		rdaddress	 => VGAMemReadAddress,
 		rdclock	 => clock_25MHz,
 		wraddress	 => VGAMemWriteAddress,
 		wrclock	 => clock_25MHz,
 		wren	 => '1',
-		q	 => VGAMemWriteData
+		q	 => VGAMemReadData 
 	);
 
 	process (VGA_VertAddress,VGA_HorAddress)
 	begin
-		VGAMemWriteAddress <= "000000" & VGA_HorAddress & '1';
+		VGAMemWriteAddress <=  VGA_HorAddress(9 downto 1) & VGA_VertAddress(8 downto 1);
 		--std_logic_vector(to_unsigned(unsigned(VGA_HorAddress) + 640 * unsigned(VGA_VertAddress),19)); 
-		VGAMemWriteData <= "00000000" & VGA_HorAddress(7 downto 0) & VGA_VertAddress(7 downto 0);
+		VGAMemWriteData <= "00000" & VGA_HorAddress(4 downto 0) & VGA_VertAddress(4 downto 0);
 		
 	end process;
 	
 	process (VGA_VertAddress,VGA_HorAddress)
 	begin
-		VGAMemReadAddress <= "0000000" & VGA_HorAddress;
-		VGA_R <= VGAMemReadData(23 downto 16); -- conect the data read from the	two port mem to the correct color 
-		VGA_G <= VGAMemReadData(15 downto 8);
-		VGA_B <= VGAMemReadData(7 downto 0);
+		VGAMemReadAddress <= VGA_HorAddress(9 downto 1) & VGA_VertAddress(8 downto 1);
+		VGA_R(7 downto 3) <= VGAMemReadData(14 downto 10); -- conect the data read from the	two port mem to the correct color 
+		VGA_G(7 downto 3) <= VGAMemReadData(9 downto 5);
+		VGA_B(7 downto 3) <= VGAMemReadData(4 downto 0);
+		VGA_R(2 downto 0) <= "000"; 
+		VGA_G(2 downto 0) <= "000";
+		VGA_B(2 downto 0) <= "000";
+		
 		/*if(VGA_VertAddress > X"0F0") then   -- 0x10
 			VGA_G <= B"11110000";
 			VGA_B <= B"00001111";
@@ -194,7 +200,7 @@ begin
 	end process;
 	
 	-- Hook up the IR conections 
-	I_r: ir_receiver port map(IRDA_RXD,KEY(0),CLOCK_50,iData);
+--	I_r: ir_receiver port map(IRDA_RXD,KEY(0),CLOCK_50,IRdata_ready,iData);
 	
 	h0: hexDisplay port map (VGA_VertAddress(3 downto 0), display0);
 	h1: hexDisplay port map (VGA_VertAddress(7 downto 4), display1);
