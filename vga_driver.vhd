@@ -65,7 +65,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 entity vga_driver is 
-	port(	VertAddress,HorAddress: out STD_logic_vector(9 downto 0);
+	port(	VertAddress,HorAddress: out STD_logic_vector(11 downto 0);
 			DataValid: out STD_logic;
 			VGA_CLK,VGA_BLANK_N,VGA_HS,VGA_VS,VGA_SYNC_N: out STD_logic;
 			CLOCK_IN: in STD_logic);
@@ -117,37 +117,15 @@ begin
 					VGA_BLANK_N <= '1';
 					DataValid <= '1';
 			
-					--VertAddress <= std_logic_vector(to_integer(unsigned(h_count)  - (to_integer(unsigned(HSync)) + to_integer(unsigned(HBackPorch))) ,10));
-					VertAddress <= std_logic_vector(to_unsigned(v_count - VSync - VBackPorch,10));
-					HorAddress <= std_logic_vector(to_unsigned(h_count - HSync - HBackPorch,10));
-					--HorAddress  <= v_count - (VSync + VBackPorch);
---					if(v_count > VSync + VBackPorch + VData/2)then
---						VGA_R(7 downto 0) <= B"11111111";
---					else
---						VGA_R(7 downto 0) <= B"00000000";
---					end if;
---					
---					
---					if(h_count < HSync + HBackPorch + HData/4)then
---						VGA_G(7 downto 0) <= B"11111111";
---						VGA_B(7 downto 0) <= B"00000000";
---						
---					elsif (h_count < HSync + HBackPorch + HData/2) then
---						VGA_B(7 downto 0) <= B"10000000";
---						VGA_G(7 downto 0) <= B"00000000";
---					elsif (h_count < HSync + HBackPorch + HData*3/4) then
---						VGA_B(7 downto 0) <= B"11111111";
---						VGA_G(7 downto 0) <= B"00000000";
---					else
---						VGA_G(7 downto 0) <= B"10000000";
---						VGA_B(7 downto 0) <= B"00000000";	
---					end if;
+					VertAddress <= std_logic_vector(to_unsigned(v_count - (VSync + VBackPorch),12));
+					HorAddress <= std_logic_vector(to_unsigned(h_count - (HSync + HBackPorch),12));
 					
+					--VertAddress <= std_logic_vector(to_unsigned(v_count,12));
+					--HorAddress <= std_logic_vector(to_unsigned(h_count,12));
 				else
 					VGA_BLANK_N <= '0';
 					DataValid <= '0';
 				end if;
-				
 			end if;
 		end if;
 	end process;

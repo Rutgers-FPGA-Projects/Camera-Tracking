@@ -8,6 +8,7 @@
 -- Import the definitions for standard logic
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
 entity CameraTracking is 
 	port(	VGA_R,VGA_G,VGA_B: out STD_logic_vector(7 downto 0);
@@ -34,6 +35,16 @@ architecture behavior of CameraTracking is
 			locked		: OUT STD_LOGIC);
 	end component;	
 	
+	component TwoPortRam IS
+	PORT(data		: IN STD_LOGIC_VECTOR (23 DOWNTO 0);
+		rdaddress		: IN STD_LOGIC_VECTOR (18 DOWNTO 0);
+		rdclock		: IN STD_LOGIC ;
+		wraddress		: IN STD_LOGIC_VECTOR (18 DOWNTO 0);
+		wrclock		: IN STD_LOGIC  := '1';
+		wren		: IN STD_LOGIC  := '0';
+		q		: OUT STD_LOGIC_VECTOR (23 DOWNTO 0));
+	END component;
+		
 	component servo is 
 		port(clk: in STD_LOGIC;
 			Angle: in integer := 100;   -- 1.5 ms
@@ -59,7 +70,7 @@ architecture behavior of CameraTracking is
 	
 	component
 		vga_driver port(
-			VertAddress,HorAddress: out STD_logic_vector(9 downto 0);
+			VertAddress,HorAddress: out STD_logic_vector(11 downto 0);
 			DataValid: out STD_logic;
 			VGA_CLK: out STD_logic;				-- used by VGA DAC
 			VGA_BLANK_N: out STD_logic;		-- Sent to VGA DAC to indicate blanking
@@ -83,7 +94,13 @@ architecture behavior of CameraTracking is
 	signal iData: std_logic_vector(31 downto 0); 
 	
 	signal DataValid: STD_LOGIC;
-	signal HorAddress,VertAddress: STD_LOGIC_VECTOR(9 downto 0);
+	signal VGA_HorAddress,VGA_VertAddress: STD_LOGIC_VECTOR(11 downto 0);
+	
+	
+	signal VGAMemReadAddress: STD_logic_vector(18 downto 0);
+	signal VGAMemWriteAddress: STD_logic_vector(18 downto 0);
+	signal VGAMemReadData: STD_logic_vector(23 downto 0);
+	signal VGAMemWriteData: STD_logic_vector(23 downto 0);
 
 begin
 	
@@ -123,8 +140,8 @@ begin
 	
 	
 	vga_inst: vga_driver port map(
-		VertAddress => VertAddress,
-		HorAddress => HorAddress,
+		VertAddress => VGA_VertAddress,
+		HorAddress => VGA_HorAddress,
 		DataValid => DataValid,
 		VGA_CLK => VGA_CLK,
 		VGA_BLANK_N => VGA_BLANK_N,
@@ -134,20 +151,66 @@ begin
 		CLOCK_IN => clock_25MHz
 		);
 	
-	VGA_R <= B"00000000";
-	VGA_G <= B"11110000";
-	VGA_B <= B"00001111";
+	
+	
+	
+	TwoPortRam_inst : TwoPortRam PORT MAP (
+		data	 => VGAMemReadData,
+		rdaddress	 => VGAMemReadAddress,
+		rdclock	 => clock_25MHz,
+		wraddress	 => VGAMemWriteAddress,
+		wrclock	 => clock_25MHz,
+		wren	 => '1',
+		q	 => VGAMemWriteData
+	);
+
+	process (VGA_VertAddress,VGA_HorAddress)
+	begin
+		VGAMemWriteAddress <= "000000" & VGA_HorAddress & '1';
+		--std_logic_vector(to_unsigned(unsigned(VGA_HorAddress) + 640 * unsigned(VGA_VertAddress),19)); 
+		VGAMemWriteData <= "00000000" & VGA_HorAddress(7 downto 0) & VGA_VertAddress(7 downto 0);
 		
+	end process;
+	
+	process (VGA_VertAddress,VGA_HorAddress)
+	begin
+		VGAMemReadAddress <= "0000000" & VGA_HorAddress;
+		VGA_R <= VGAMemReadData(23 downto 16); -- conect the data read from the	two port mem to the correct color 
+		VGA_G <= VGAMemReadData(15 downto 8);
+		VGA_B <= VGAMemReadData(7 downto 0);
+		/*if(VGA_VertAddress > X"0F0") then   -- 0x10
+			VGA_G <= B"11110000";
+			VGA_B <= B"00001111";
+		else
+			VGA_B <= B"11110000";
+			VGA_G <= B"00001111";
+		end if;
+		if(VGA_HorAddress > X"140") then  -- 0x18
+			VGA_R <= B"11000000";
+		else	
+			VGA_R <= B"00000000";
+		end if;
+		*/
+	end process;
 	
 	-- Hook up the IR conections 
 	I_r: ir_receiver port map(IRDA_RXD,KEY(0),CLOCK_50,iData);
 	
-	h0: hexDisplay port map (iData(31 downto 28), display0);
-	h1: hexDisplay port map (iData(27 downto 24), display1);
-	h2: hexDisplay port map (iData(23 downto 20), display2);
-	h3: hexDisplay port map (iData(19 downto 16), display3);
+	h0: hexDisplay port map (VGA_VertAddress(3 downto 0), display0);
+	h1: hexDisplay port map (VGA_VertAddress(7 downto 4), display1);
+	h2: hexDisplay port map (VGA_HorAddress(3 downto 0), display2);
+	h3: hexDisplay port map (VGA_HorAddress(7 downto 4), display3);
 	h4: hexDisplay port map (iData(15 downto 12), display4);
 	h5: hexDisplay port map (iData(11 downto 8), display5);
+	
+
+	
+--	h0: hexDisplay port map (iData(31 downto 28), display0);
+--	h1: hexDisplay port map (iData(27 downto 24), display1);
+--	h2: hexDisplay port map (iData(23 downto 20), display2);
+--	h3: hexDisplay port map (iData(19 downto 16), display3);
+--	h4: hexDisplay port map (iData(15 downto 12), display4);
+--	h5: hexDisplay port map (iData(11 downto 8), display5);
 	
 	HEX0<=display0;
 	HEX1<=display1;
