@@ -32,7 +32,7 @@ architecture behaviour of ir_receiver is
 	signal guidance_count: integer;
 	signal dataread_count: integer;
 ----------------------------------------
-	signal bitcount: integer range 0 to 34 := 0;
+	signal bitcount: integer := 0;  --range 0 to 34 
 ----------------------------------------
 	signal data_ready_flag: std_logic;
 	signal data: std_logic_vector(31 downto 0);
@@ -127,9 +127,11 @@ begin
 		if reset='0' then 
 			bitcount<=0;
 		elsif rising_edge(CLOCK_50) then 
-			if (state=dataread and dataread_count=20000) then 
-				bitcount<=bitcount+1;
-			else
+			if state=dataread then 
+				if (dataread_count=20000) then 
+					bitcount<=bitcount+1;
+				end if;
+			else 
 				bitcount<=0;
 			end if;
 		end if;
@@ -155,7 +157,7 @@ begin
 							end if;
 					when 
 						dataread=>
-							if (dataread_count>=data2idleThreshold or bitcount>=33) then 
+							if ((bitcount>=33) or (dataread_count>=data2idleThreshold)) then        
 								state<=idle;	
 							end if;
 					when others =>	
@@ -172,16 +174,18 @@ begin
 		if (reset='0') then 
 			data<= (others=>'0');
 		elsif rising_edge(CLOCK_50) then
-			if (dataread_count>=data_high_duration) then 
-				data(bitcount-1)<='1';
+			if state=dataread then
+				if (dataread_count>=data_high_duration) then 
+					data(bitcount-1)<='1';
+				end if;
 			else 
 				data<=(others=>'0');
 			end if;
 		end if;
 	end process;
 	 				
---Check and Set the data_ready_flag 
-	process(CLOCK_50, reset)
+--Check and Set the data_ready_flag 													
+	process(CLOCK_50, reset)                        --bit count is a problem;
 	begin 
 		if (reset='0') then 
 			data_ready_flag<='0';
@@ -189,9 +193,13 @@ begin
 			if bitcount=32 then
 				if (data(31 downto 24)=(not data(23 downto 16))) then 
 					data_buffer<=data;
+					--odata<=data_buffer;
 					data_ready_flag<='1';
-				else 
-					data_ready_flag<='0';
+				--else 
+					--data_ready_flag<='0';
+					--if reset ='0' then 
+					--	odata<=(others=> '0');
+					--end if;
 				end if;
 			else 
 				data_ready_flag<='0';
@@ -205,13 +213,12 @@ begin
 		if reset ='0' then 
 			odata<=(others=> '0');
 		elsif rising_edge(CLOCK_50) then 
-			if data_ready_flag='1' then 
+			if data_ready_flag='1' then                                    --     data_ready_flag is a big problem
 				odata<=data_buffer;
-			--elsif rising_edge(CLOCK_50) then 	
 				--odata(23 downto 0) <= data_buffer(23 downto 0);
 				--if(state = idle) then 
-					--odata(31 downto 24) <= "00010001";
-				--elsif (state = guidance) then
+				--	odata(31 downto 24) <= "00010001";
+			--	elsif (state = guidance) then
 				--	odata(31 downto 24) <= "00100010"; 
 				--else
 				--	odata(31 downto 24) <= "00110011";
