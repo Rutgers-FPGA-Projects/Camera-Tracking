@@ -1,0 +1,49 @@
+-- Peter Tu
+
+-- Counter used to determine pixel location in image
+
+LIBRARY IEEE;
+USE IEEE.STD_LOGIC_1164.ALL;
+USE IEEE.NUMERIC_STD.ALL;
+
+ENTITY COUNTER IS 
+	GENERIC (	RES_WIDTH: INTEGER:=320;
+					RES_HEIGHT: INTEGER:=240);
+					
+	PORT (	CLK : IN STD_LOGIC;
+				RST : IN STD_LOGIC;
+				EN : IN STD_LOGIC;
+				W_LOC : OUT INTEGER;
+				H_LOC : OUT INTEGER);	
+END COUNTER;
+
+ARCHITECTURE COUNT OF COUNTER IS
+BEGIN
+	PROCESS(CLK, RST, EN)
+	
+	VARIABLE VW_LOC: INTEGER := 0;
+	VARIABLE VH_LOC: INTEGER := 0;
+	
+	BEGIN
+		IF (RST = '0') THEN
+			VW_LOC := -1;
+			VH_LOC := 0;
+			W_LOC <= 0;
+			H_LOC <= 0;
+		ELSIF (RISING_EDGE(CLK)) THEN
+			IF (EN = '1') THEN
+				VW_LOC := VW_LOC + 1;
+				IF (VW_LOC = RES_WIDTH) THEN
+					VH_LOC := VH_LOC + 1;
+					VW_LOC := 0;
+					IF (VH_LOC = RES_HEIGHT) THEN
+						VH_LOC := 0;
+					END IF;
+				END IF;
+				W_LOC <= VW_LOC;
+				H_LOC <= VH_LOC; 
+			END IF;
+		END IF;
+	END PROCESS;
+END COUNT;
+
