@@ -28,7 +28,8 @@ entity CameraTracking is
 			D5M_RESET_N: out STD_LOGIC;
 			D5M_SCLK: out STD_LOGIC;
 			D5M_SDATA: inout STD_LOGIC;
-			D5M_XCLKIN: out STD_LOGIC
+			D5M_XCLKIN: out STD_LOGIC;
+			D5M_TRIGGER: out STD_LOGIC
 	);
 end;
 
@@ -41,6 +42,7 @@ architecture behavior of CameraTracking is
 			inclk0		: IN STD_LOGIC  := '0';
 			c0		: OUT STD_LOGIC ;
 			c1		: OUT STD_LOGIC ;
+			c2		: OUT STD_LOGIC ;
 			locked		: OUT STD_LOGIC);
 	end component;	
 	
@@ -95,6 +97,32 @@ architecture behavior of CameraTracking is
 		end component;
 	
 	
+	component RAW2RGB is port(
+		iCLK: in STD_LOGIC;
+		iRST: in STD_LOGIC;
+		iDATA: in STD_LOGIC_VECTOR(11 downto 0);
+		iDVAL: in STD_LOGIC;
+		oRed: out STD_LOGIC_VECTOR(11 downto 0);
+		oGreen: out STD_LOGIC_VECTOR(11 downto 0);
+		oBlue: out STD_LOGIC_VECTOR(11 downto 0);
+		oDVAL: out STD_LOGIC;
+		iX_Cont: in STD_LOGIC_VECTOR(10 downto 0);
+		iY_Cont: in STD_LOGIC_VECTOR(10 downto 0)
+	);
+	end component;
+	
+	
+	
+	component I2C_CCD_Config is port(
+		iCLK: in STD_LOGIC;
+		iRST_N: in STD_LOGIC;
+		iEXPOSURE_ADJ: in STD_LOGIC;
+		iEXPOSURE_DEC_p: in STD_LOGIC;
+		iZOOM_MODE_SW: in STD_LOGIC;
+		I2C_SCLK: out STD_LOGIC;
+		I2C_SDAT: inout STD_LOGIC
+		);
+	end component;
 	
 	
 	component vga_driver is port(
@@ -110,8 +138,9 @@ architecture behavior of CameraTracking is
 
 	-- used for PLL
 	signal clock_106MHz: STD_logic; 
-	signal clock_50MHz: STD_LOGIC;
+	signal clock_1MHz: STD_LOGIC;
 	signal clock_25MHz: STD_LOGIC;
+	signal clock_96MHz: STD_LOGIC;
 	
 	signal locked: STD_logic;
 	signal rst: STD_LOGIC := '0';
@@ -142,10 +171,12 @@ architecture behavior of CameraTracking is
 	signal rCCD_FVAL: STD_LOGIC;
 	
 	signal oDATA: STD_lOGIC_VECTOR(11 downto 0);
-	signal oDVAL: STD_LOGIC;
+	signal DVAL: STD_LOGIC :='0';
 	signal oX_Cont: STD_LOGIC_VECTOR(15 downto 0);
 	signal oY_Cont: STD_LOGIC_VECTOR(15 downto 0);
 	signal oFrame_Cont: STD_LOGIC_VECTOR(31 downto 0);
+	signal Red, Green, Blue: STD_LOGIC_VECTOR(11 downto 0);
+	signal RGB_DVAL: STD_LOGIC;
 	
 begin
 	
@@ -153,8 +184,9 @@ begin
 	clock1_inst : clock1 PORT MAP(
 		areset	 => rst,  -- active high to Reset PLL
 		inclk0	 => CLOCK_50,
-		c0	 => clock_50MHz,
+		c0	 => clock_1MHz,
 		c1	 => clock_106MHz,
+		c2  => clock_96MHz,
 		locked	 => locked
 	);
 	
@@ -168,26 +200,28 @@ begin
 	end process;
 	
 	
-	process (clock_50MHz)
+	process (CLOCK_50)
 	begin
-		if(rising_edge(clock_50MHz)) then
+		if(rising_edge(CLOCK_50)) then
 			clock_25MHz <= not clock_25MHz;
 		end if;
 	end process;
 	
 	LEDG(0) <= rst; --clock debuging 
 	LEDG(1) <= locked;
+	LEDG(2) <= D5M_PIXLCLK;
+	LEDG(3) <= clock_96MHz;
 	
 	-- pan servo
 	Servo_0 : servo port map (
-		clk => clock_50MHz,
+		clk => CLOCK_50,
 		Angle => 100,
 		servo_ctr => EXT_IO(0)
 	);
 	
 	-- vertical servo
 	Servo_1 : servo port map (
-		clk => clock_50MHz,
+		clk => CLOCK_50,
 		Angle => 100,
 		servo_ctr => EXT_IO(1)
 	);
@@ -206,9 +240,13 @@ begin
 		);
 	
 	
+	D5M_XCLKIN <= clock_25MHz;
+	D5M_TRIGGER	<= '1';  -- tRIGGER
+	D5M_RESET_N	<= KEY(1);
+	
 	Camera: CCD_Capture port map(
 					oDATA => oDATA,
-					oDVAL => oDVAL,
+					oDVAL => DVAL,
 					oX_Cont =>oX_Cont,
 					oY_Cont => oY_Cont,
 					oFrame_Cont => oFrame_Cont,
@@ -217,18 +255,44 @@ begin
 					iLVAL => rCCD_LVAL,
 					iSTART => not KEY(3),
 					iEND => not KEY(2),
-					iCLK => not D5M_PIXLCLK,
+					iCLK => D5M_PIXLCLK,
 					iRST => '1'    -- active low
 					);
-		
+	
+	
+	RAW: RAW2RGB port map( 
+		iCLK => D5M_PIXLCLK,
+		iRST => '1',
+		iDATA => oDATA,
+		iDVAL => DVAL,
+		oRed => Red,
+		oGreen => Green,
+		oBlue => Blue,
+		iX_Cont => oX_Cont(10 downto 0),
+		iY_Cont => oY_Cont(10 downto 0),
+		oDVAL => RGB_DVAL
+	);
+	
+	
+	i2c: I2C_CCD_Config port map(
+		iCLK => CLOCK_50,
+		iRST_N => '1',
+		iEXPOSURE_ADJ => '0',
+		iEXPOSURE_DEC_p => '0',
+		iZOOM_MODE_SW => '0',
+		I2C_SCLK => D5M_SCLK,
+		I2C_SDAT => D5M_SDATA
+	);
+	
+	
 	VGAMemWriteAddress <=  VGA_HorAddress(9 downto 1) & VGA_VertAddress(8 downto 1);
 	
 	TwoPortRam_inst : TwoPortRam PORT MAP (
-		data	 => "000" & oDATA, --VGAMemWriteData,
+		data	 => Red(11 downto 7) & Green(11 downto 7) & Blue(11 downto 7), --VGAMemWriteData,
 		rdaddress	 => VGAMemReadAddress,
 		rdclock	 => clock_25MHz,
-		wraddress	 =>  oX_Cont(9 downto 1) & oY_Cont(8 downto 1), --VGAMemWriteAddress,
-		wrclock	 => not D5M_PIXLCLK,
+		wraddress	 =>  VGAMemWriteAddress, --oX_Cont(9 downto 1) & oY_Cont(8 downto 1), --VGAMemWriteAddress,
+		wrclock	 => D5M_PIXLCLK,
 		wren	 => '1', --VGAMemWriteEnable,
 		q	 => VGAMemReadData 
 	);
@@ -303,13 +367,22 @@ begin
 	
 	-- Hook up the IR conections 
 --	I_r: ir_receiver port map(IRDA_RXD,KEY(0),CLOCK_50,IRdata_ready,iData);
-	h0: hexDisplay port map (iData(31 downto 28), display0);
-	h1: hexDisplay port map (iData(27 downto 24), display1);
-	h2: hexDisplay port map (iData(23 downto 20), display2);
-	h3: hexDisplay port map (iData(19 downto 16), display3);
+	
+	
+	h0: hexDisplay port map (oX_Cont(3 downto 0), display0);
+	h1: hexDisplay port map (oX_Cont(7 downto 4), display1);
+	h2: hexDisplay port map (oY_Cont(3 downto 0), display2);
+	h3: hexDisplay port map (oY_Cont(7 downto 4), display3);
 	h4: hexDisplay port map (iData(15 downto 12), display4);
 	h5: hexDisplay port map (iData(11 downto 8), display5);
 	
+--	h0: hexDisplay port map (iData(31 downto 28), display0);
+--	h1: hexDisplay port map (iData(27 downto 24), display1);
+--	h2: hexDisplay port map (iData(23 downto 20), display2);
+--	h3: hexDisplay port map (iData(19 downto 16), display3);
+--	h4: hexDisplay port map (iData(15 downto 12), display4);
+--	h5: hexDisplay port map (iData(11 downto 8), display5);
+--	
 	HEX0<=display0;
 	HEX1<=display1;
 	HEX2<=display2;
