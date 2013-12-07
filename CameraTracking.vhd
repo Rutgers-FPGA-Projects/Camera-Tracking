@@ -211,6 +211,8 @@ begin
 	LEDG(1) <= locked;
 	LEDG(2) <= D5M_PIXLCLK;
 	LEDG(3) <= clock_96MHz;
+	LEDG(6) <= DVAL;
+	LEDG(7) <= RGB_DVAL;
 	
 	-- pan servo
 	Servo_0 : servo port map (
@@ -240,9 +242,9 @@ begin
 		);
 	
 	
-	D5M_XCLKIN <= clock_25MHz;
-	D5M_TRIGGER	<= '1';  -- tRIGGER
-	D5M_RESET_N	<= KEY(1);
+	D5M_XCLKIN <= clock_96MHz;
+	D5M_TRIGGER	<= '1';  -- TRIGGER
+	D5M_RESET_N	<= KEY(0);
 	
 	Camera: CCD_Capture port map(
 					oDATA => oDATA,
@@ -256,13 +258,13 @@ begin
 					iSTART => not KEY(3),
 					iEND => not KEY(2),
 					iCLK => D5M_PIXLCLK,
-					iRST => '1'    -- active low
+					iRST => KEY(1)    -- active low
 					);
 	
 	
 	RAW: RAW2RGB port map( 
 		iCLK => D5M_PIXLCLK,
-		iRST => '1',
+		iRST => KEY(0),
 		iDATA => oDATA,
 		iDVAL => DVAL,
 		oRed => Red,
@@ -274,24 +276,24 @@ begin
 	);
 	
 	
-	i2c: I2C_CCD_Config port map(
-		iCLK => CLOCK_50,
-		iRST_N => '1',
-		iEXPOSURE_ADJ => '0',
-		iEXPOSURE_DEC_p => '0',
-		iZOOM_MODE_SW => '0',
-		I2C_SCLK => D5M_SCLK,
-		I2C_SDAT => D5M_SDATA
-	);
+--	i2c: I2C_CCD_Config port map(
+--		iCLK => CLOCK_50,
+--		iRST_N => KEY(1),
+--		iEXPOSURE_ADJ => '0',
+--		iEXPOSURE_DEC_p => '0',
+--		iZOOM_MODE_SW => '0',
+--		I2C_SCLK => D5M_SCLK,
+--		I2C_SDAT => D5M_SDATA
+--	);
 	
 	
 	VGAMemWriteAddress <=  VGA_HorAddress(9 downto 1) & VGA_VertAddress(8 downto 1);
 	
 	TwoPortRam_inst : TwoPortRam PORT MAP (
-		data	 => Red(11 downto 7) & Green(11 downto 7) & Blue(11 downto 7), --VGAMemWriteData,
+		data	 => Red(6 downto 2) & Green(6 downto 2) & Blue(6 downto 2), --VGAMemWriteData,
 		rdaddress	 => VGAMemReadAddress,
 		rdclock	 => clock_25MHz,
-		wraddress	 =>  VGAMemWriteAddress, --oX_Cont(9 downto 1) & oY_Cont(8 downto 1), --VGAMemWriteAddress,
+		wraddress	 => oX_Cont(9 downto 1) & oY_Cont(8 downto 1), --VGAMemWriteAddress,
 		wrclock	 => D5M_PIXLCLK,
 		wren	 => '1', --VGAMemWriteEnable,
 		q	 => VGAMemReadData 
@@ -373,9 +375,9 @@ begin
 	h1: hexDisplay port map (oX_Cont(7 downto 4), display1);
 	h2: hexDisplay port map (oY_Cont(3 downto 0), display2);
 	h3: hexDisplay port map (oY_Cont(7 downto 4), display3);
-	h4: hexDisplay port map (iData(15 downto 12), display4);
-	h5: hexDisplay port map (iData(11 downto 8), display5);
-	
+	h4: hexDisplay port map (oFrame_Cont(3 downto 0), display4);
+	h5: hexDisplay port map (oFrame_Cont(7 downto 4), display5);
+
 --	h0: hexDisplay port map (iData(31 downto 28), display0);
 --	h1: hexDisplay port map (iData(27 downto 24), display1);
 --	h2: hexDisplay port map (iData(23 downto 20), display2);
