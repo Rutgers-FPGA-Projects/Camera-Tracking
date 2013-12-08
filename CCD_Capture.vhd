@@ -42,8 +42,8 @@ signal CurrentState,NextState: states;
 
 signal ValidData: STD_LOGIC;
 signal mFrameCnt: integer ; --range 0 to 56000 :0;
-signal xcnt: integer;
-signal ycnt: integer;
+signal xcnt: integer := 0;
+signal ycnt: integer := 0;
 signal reset: STD_LOGIC;
 
 signal Data: STD_LOGIC_VECTOR(11 downto 0);
@@ -70,86 +70,23 @@ begin
 	end process;
 	
 	
---	process(currentState)begin
---		case currentState is
---			when NotFrame => state <= "000";
---			when PreLine => state <= "001";
---			when IsLine => state <= "010";
---		end case;
---	end process;
---	
---	process(nextState)begin
---		case nextState is
---			when NotFrame => nexState <= "000";
---			when PreLine => nexState <= "001";
---			when IsLine => nexState <= "010";
---		end case;
---	end process;
---	
---	
-	
---	process(currentState,FVAL,LVAL,DATA,iCLK)
---	begin
---		case currentState is
---			when NotFrame => 
---				xcnt <= 0;
---				ycnt <= 0;
---				outofcontrol <= '0';
---				if(FVAL = '0')then  -- do not transition states
---					nextState <= NotFrame;
---				else
---					nextState <= PreLine;
---				end if;
---				
---			when PreLine => 
---				if(xcnt > 0)then
---					xcnt <= 0;
---					--ycnt <= ycnt +1;
---				end if;
---				
---				if(FVAL = '1' and LVAL = '1')then -- we got a line
---					nextState <= IsLine;
---				elsif(FVAL = '1' and LVAL = '0')then -- keep waiting
---					nextState <= PreLine;
---				else	
---					nextState <= NotFrame;
---				end if;
---			when IsLine => 
---				if(FVAL = '1' and LVAL = '1') then -- keep going 
---					xcnt <= xcnt + 1;
---					oDATA <= DATA;
---					nextState <= IsLine;
---				else
---					--ycnt <= ycnt + 1;
---					nextState <= PreLine;
---				end if;
---				
---				if(xcnt > 2590)then
---					xcnt <= 0;
---					ycnt <= ycnt + 1;
---				end if;
---				if(ycnt > 2500)then 
---					ycnt <= 0;
---					outofcontrol <= '1';
---				end if;
---		end case;
---		
---	end process;
-	
 	process(iCLK)begin -- this is the frame valid signal
 		if(falling_edge(iCLK))then
-			if(ValidData = '1')then
+			if(iRST = '0')then
+				xcnt <= 0;
+				ycnt <= 0;
+			elsif(ValidData = '1')then
 				
 				oDATA <= DATA;
-				if(xcnt < 2592)then
-					xcnt <= xcnt +1;
+				if(xcnt > 0)then
+					xcnt <= xcnt -1;
 				else	
-					xcnt <= 0;
+					xcnt <= 2591;
 					
-					if(ycnt < 1944) then 
-						ycnt <= ycnt +1;
+					if(ycnt > 0) then 
+						ycnt <= ycnt -1;
 					else 
-						ycnt <= 0;
+						ycnt <= 1943;
 					end if;
 				end if;
 				
