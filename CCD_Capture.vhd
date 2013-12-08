@@ -44,6 +44,7 @@ signal ValidData: STD_LOGIC;
 signal mFrameCnt: integer ; --range 0 to 56000 :0;
 signal xcnt: integer := 0;
 signal ycnt: integer := 0;
+signal blankTime: integer := 0;
 signal reset: STD_LOGIC;
 
 signal Data: STD_LOGIC_VECTOR(11 downto 0);
@@ -76,13 +77,12 @@ begin
 				xcnt <= 0;
 				ycnt <= 0;
 			elsif(ValidData = '1')then
-				
+				blankTime <= 0;
 				oDATA <= DATA;
 				if(xcnt > 0)then
 					xcnt <= xcnt -1;
 				else	
 					xcnt <= 2591;
-					
 					if(ycnt > 0) then 
 						ycnt <= ycnt -1;
 					else 
@@ -91,8 +91,13 @@ begin
 				end if;
 				
 			elsif(FVAL = '0' and LVAL = '0') then -- still valid just waiting for the next line
-				--xcnt <= 0;
-				--ycnt <= 0;
+				if(blankTime > 25 * 2591)then
+					xcnt <= 0;
+					ycnt <= 0;
+					blankTime <= 0;
+				else
+					blankTime <= blankTime + 1;
+				end if;
 			end if;
 		
 		end if; 
