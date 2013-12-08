@@ -97,6 +97,15 @@ architecture behavior of CameraTracking is
 					);
 		end component;
 	
+	component BayerToRGB is port(
+					oDATA: out STD_lOGIC_VECTOR(14 downto 0);  -- 5 bit RGB
+					oDVAL: out STD_LOGIC;
+					oX_Cont: out STD_LOGIC_VECTOR(15 downto 0);
+					oY_Cont: out STD_LOGIC_VECTOR(15 downto 0);
+					iX_Cont: in STD_LOGIC_VECTOR(15 downto 0);
+					iY_Cont: in STD_LOGIC_VECTOR(15 downto 0);
+					iDATA: in STD_lOGIC_VECTOR(11 downto 0));
+	end component ;
 	
 	
 	component vga_driver is port(
@@ -145,9 +154,12 @@ architecture behavior of CameraTracking is
 	signal rCCD_FVAL: STD_LOGIC;
 	
 	signal oDATA: STD_lOGIC_VECTOR(11 downto 0);
+	signal pixel: STD_LOGIC_VECTOR(14 downto 0);
 	signal DVAL: STD_LOGIC :='0';
 	signal oX_Cont: STD_LOGIC_VECTOR(15 downto 0);
 	signal oY_Cont: STD_LOGIC_VECTOR(15 downto 0);
+	signal RGB_X: STD_LOGIC_VECTOR(15 downto 0);
+	signal RGB_Y: STD_LOGIC_VECTOR(15 downto 0);
 	signal oFrame_Cont: STD_LOGIC_VECTOR(31 downto 0);
 	signal Red, Green, Blue: STD_LOGIC_VECTOR(11 downto 0);
 	signal RGB_DVAL: STD_LOGIC;
@@ -183,23 +195,29 @@ begin
 					);
 	
 	
-	
+	BtoRGB: BayerToRGB port map(
+					oDATA => pixel,  -- 5 bit RGB
+					oDVAL => RGB_DVAL,
+					oX_Cont => RGB_X,
+					oY_Cont => RGB_Y,
+					iX_Cont => oX_Cont,
+					iY_Cont => oY_Cont,
+					iDATA => oDATA 
+					);
 	
 	
 	
 	VGAMemWriteAddress <=  VGA_HorAddress(9 downto 1) & VGA_VertAddress(8 downto 1);
 	
 	TwoPortRam_inst : TwoPortRam PORT MAP (
-		data	 => "000" & oDATA, ---Red(6 downto 2) & Green(6 downto 2) & Blue(6 downto 2), --VGAMemWriteData,
+		data	 => pixel, ---Red(6 downto 2) & Green(6 downto 2) & Blue(6 downto 2), --VGAMemWriteData,
 		rdaddress	 => VGAMemReadAddress,
 		rdclock	 => clock_25MHz,
-		wraddress	 => oX_Cont(11 downto 3) & oY_Cont(10 downto 3), --VGAMemWriteAddress,
+		wraddress	 => RGB_X(11 downto 3) & RGB_Y(10 downto 3), --VGAMemWriteAddress,
 		wrclock	 => D5M_PIXLCLK,
 		wren	 => '1', --VGAMemWriteEnable,
 		q	 => VGAMemReadData 
 	);
-	
-	
 	
 	
 	
@@ -258,8 +276,6 @@ begin
 		CLOCK_IN => clock_25MHz
 		);
 	
-
-
 	
 	mup <= KEY(0);
 	mdown <= KEY(1);
@@ -302,13 +318,13 @@ begin
 	process (VGA_VertAddress,VGA_HorAddress)
 	begin
 		VGAMemReadAddress <= VGA_HorAddress(9 downto 1) & VGA_VertAddress(8 downto 1);
-		VGA_R(7 downto 3) <= VGAMemReadData(14 downto 10); -- conect the data read from the	two port mem to the correct color 
-		--VGA_G(7 downto 3) <= VGAMemReadData(9 downto 5);
-		VGA_G(7 downto 0) <= VGAMemReadData(7 downto 0);
-		--VGA_B(7 downto 3) <= VGAMemReadData(4 downto 0);
+		--VGA_R(7 downto 3) <= VGAMemReadData(14 downto 10); -- conect the data read from the	two port mem to the correct color 
+		VGA_R(7 downto 3) <= VGAMemReadData(14 downto 10);
+		VGA_G(7 downto 3) <= VGAMemReadData(9 downto 5);
+		VGA_B(7 downto 3) <= VGAMemReadData(4 downto 0);
 		VGA_B(7 downto 3) <= "00000";
 		VGA_R(2 downto 0) <= "000"; 
-		--VGA_G(2 downto 0) <= "000";
+		VGA_G(2 downto 0) <= "000";
 		VGA_B(2 downto 0) <= "000";
 	end process;
 	
