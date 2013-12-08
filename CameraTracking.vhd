@@ -18,6 +18,7 @@ entity CameraTracking is
 			EXT_IO: out STD_lOGIC_VECTOR(6 downto 0);  -- this is how the pin mapping labels the external IOs
 			LEDG: out STD_logic_vector(7 downto 0);
 			KEY: in STD_logic_vector(3 downto 0);
+			LEDR: out STD_LOGIC_VECTOR(17 downto 0);
 			--GPIO: out STD_logic_vector(4 downto 0);
 			IRDA_RXD: in std_logic;
 			HEX0, HEX1, HEX2, HEX3, HEX4, HEX5: OUT STD_LOGIC_VECTOR(0 TO 6);
@@ -97,33 +98,6 @@ architecture behavior of CameraTracking is
 		end component;
 	
 	
-	component RAW2RGB is port(
-		iCLK: in STD_LOGIC;
-		iRST: in STD_LOGIC;
-		iDATA: in STD_LOGIC_VECTOR(11 downto 0);
-		iDVAL: in STD_LOGIC;
-		oRed: out STD_LOGIC_VECTOR(11 downto 0);
-		oGreen: out STD_LOGIC_VECTOR(11 downto 0);
-		oBlue: out STD_LOGIC_VECTOR(11 downto 0);
-		oDVAL: out STD_LOGIC;
-		iX_Cont: in STD_LOGIC_VECTOR(10 downto 0);
-		iY_Cont: in STD_LOGIC_VECTOR(10 downto 0)
-	);
-	end component;
-	
-	
-	
-	component I2C_CCD_Config is port(
-		iCLK: in STD_LOGIC;
-		iRST_N: in STD_LOGIC;
-		iEXPOSURE_ADJ: in STD_LOGIC;
-		iEXPOSURE_DEC_p: in STD_LOGIC;
-		iZOOM_MODE_SW: in STD_LOGIC;
-		I2C_SCLK: out STD_LOGIC;
-		I2C_SDAT: inout STD_LOGIC
-		);
-	end component;
-	
 	
 	component vga_driver is port(
 			VertAddress,HorAddress: out STD_logic_vector(11 downto 0);
@@ -180,6 +154,55 @@ architecture behavior of CameraTracking is
 	
 begin
 	
+	LEDG(0) <= rst; --clock debuging 
+	LEDG(1) <= locked;
+	LEDG(2) <= D5M_PIXLCLK;
+	LEDG(3) <= clock_96MHz;
+	LEDG(6) <= DVAL;
+	LEDG(7) <= RGB_DVAL;
+		
+	D5M_XCLKIN <= clock_96MHz;
+	D5M_TRIGGER	<= '1';  -- TRIGGER
+	D5M_RESET_N	<= KEY(0);
+	
+	LEDR(15 downto 0) <= oY_Cont;
+	
+	Camera: CCD_Capture port map(
+					oDATA => oDATA,
+					oDVAL => DVAL,
+					oX_Cont =>oX_Cont,
+					oY_Cont => oY_Cont,
+					oFrame_Cont => oFrame_Cont,
+					iDATA => rCCD_DATA,
+					iFVAL => rCCD_FVAL,
+					iLVAL => rCCD_LVAL,
+					iSTART => not KEY(3),
+					iEND => not KEY(2),
+					iCLK => D5M_PIXLCLK,
+					iRST => KEY(1)    -- active low
+					);
+	
+	
+	
+	
+	
+	
+	VGAMemWriteAddress <=  VGA_HorAddress(9 downto 1) & VGA_VertAddress(8 downto 1);
+	
+	TwoPortRam_inst : TwoPortRam PORT MAP (
+		data	 => "000" & oDATA, ---Red(6 downto 2) & Green(6 downto 2) & Blue(6 downto 2), --VGAMemWriteData,
+		rdaddress	 => VGAMemReadAddress,
+		rdclock	 => clock_25MHz,
+		wraddress	 => oX_Cont(11 downto 3) & oY_Cont(10 downto 3), --VGAMemWriteAddress,
+		wrclock	 => D5M_PIXLCLK,
+		wren	 => '1', --VGAMemWriteEnable,
+		q	 => VGAMemReadData 
+	);
+	
+	
+	
+	
+	
 	-- implement the clock PLL to create a 106 MHz clock
 	clock1_inst : clock1 PORT MAP(
 		areset	 => rst,  -- active high to Reset PLL
@@ -207,12 +230,6 @@ begin
 		end if;
 	end process;
 	
-	LEDG(0) <= rst; --clock debuging 
-	LEDG(1) <= locked;
-	LEDG(2) <= D5M_PIXLCLK;
-	LEDG(3) <= clock_96MHz;
-	LEDG(6) <= DVAL;
-	LEDG(7) <= RGB_DVAL;
 	
 	-- pan servo
 	Servo_0 : servo port map (
@@ -241,63 +258,7 @@ begin
 		CLOCK_IN => clock_25MHz
 		);
 	
-	
-	D5M_XCLKIN <= clock_96MHz;
-	D5M_TRIGGER	<= '1';  -- TRIGGER
-	D5M_RESET_N	<= KEY(0);
-	
-	Camera: CCD_Capture port map(
-					oDATA => oDATA,
-					oDVAL => DVAL,
-					oX_Cont =>oX_Cont,
-					oY_Cont => oY_Cont,
-					oFrame_Cont => oFrame_Cont,
-					iDATA => rCCD_DATA,
-					iFVAL => rCCD_FVAL,
-					iLVAL => rCCD_LVAL,
-					iSTART => not KEY(3),
-					iEND => not KEY(2),
-					iCLK => D5M_PIXLCLK,
-					iRST => KEY(1)    -- active low
-					);
-	
-	
-	RAW: RAW2RGB port map( 
-		iCLK => D5M_PIXLCLK,
-		iRST => KEY(0),
-		iDATA => oDATA,
-		iDVAL => DVAL,
-		oRed => Red,
-		oGreen => Green,
-		oBlue => Blue,
-		iX_Cont => oX_Cont(10 downto 0),
-		iY_Cont => oY_Cont(10 downto 0),
-		oDVAL => RGB_DVAL
-	);
-	
-	
---	i2c: I2C_CCD_Config port map(
---		iCLK => CLOCK_50,
---		iRST_N => KEY(1),
---		iEXPOSURE_ADJ => '0',
---		iEXPOSURE_DEC_p => '0',
---		iZOOM_MODE_SW => '0',
---		I2C_SCLK => D5M_SCLK,
---		I2C_SDAT => D5M_SDATA
---	);
-	
-	
-	VGAMemWriteAddress <=  VGA_HorAddress(9 downto 1) & VGA_VertAddress(8 downto 1);
-	
-	TwoPortRam_inst : TwoPortRam PORT MAP (
-		data	 => Red(6 downto 2) & Green(6 downto 2) & Blue(6 downto 2), --VGAMemWriteData,
-		rdaddress	 => VGAMemReadAddress,
-		rdclock	 => clock_25MHz,
-		wraddress	 => oX_Cont(9 downto 1) & oY_Cont(8 downto 1), --VGAMemWriteAddress,
-		wrclock	 => D5M_PIXLCLK,
-		wren	 => '1', --VGAMemWriteEnable,
-		q	 => VGAMemReadData 
-	);
+
 
 	
 	mup <= KEY(0);
@@ -336,34 +297,18 @@ begin
 	
 		
 	
-	-- create  a video buffer
-	
---	process (VGA_VertAddress,VGA_HorAddress)
---	begin
---		if(SW(17) = '1')then
---			VGAMemWriteAddress <=  VGA_HorAddress(9 downto 1) & VGA_VertAddress(8 downto 1);
---			VGAMemWriteEnable <= '1';
---			--std_logic_vector(to_unsigned(unsigned(VGA_HorAddress) + 640 * unsigned(VGA_VertAddress),19)); 
---			
---			VGAMemWriteData <= "00000" & VGA_HorAddress(9 downto 5) & VGA_VertAddress(8 downto 4);
---		else
---			VGAMemWriteAddress <=  std_logic_vector(to_unsigned(horpos,9)) & std_logic_vector(to_unsigned(verpos,8));
---			VGAMemWriteEnable <= '1';
---			--std_logic_vector(to_unsigned(unsigned(VGA_HorAddress) + 640 * unsigned(VGA_VertAddress),19)); 
---			VGAMemWriteData <= "111110000000000";
---		end if;
---	end process;
-	
 	
 	-- copy the video memory data to the VGA out lines for the corisponding address
 	process (VGA_VertAddress,VGA_HorAddress)
 	begin
 		VGAMemReadAddress <= VGA_HorAddress(9 downto 1) & VGA_VertAddress(8 downto 1);
 		VGA_R(7 downto 3) <= VGAMemReadData(14 downto 10); -- conect the data read from the	two port mem to the correct color 
-		VGA_G(7 downto 3) <= VGAMemReadData(9 downto 5);
-		VGA_B(7 downto 3) <= VGAMemReadData(4 downto 0);
+		--VGA_G(7 downto 3) <= VGAMemReadData(9 downto 5);
+		VGA_G(7 downto 0) <= VGAMemReadData(7 downto 0);
+		--VGA_B(7 downto 3) <= VGAMemReadData(4 downto 0);
+		VGA_B(7 downto 3) <= "00000";
 		VGA_R(2 downto 0) <= "000"; 
-		VGA_G(2 downto 0) <= "000";
+		--VGA_G(2 downto 0) <= "000";
 		VGA_B(2 downto 0) <= "000";
 	end process;
 	
@@ -373,10 +318,10 @@ begin
 	
 	h0: hexDisplay port map (oX_Cont(3 downto 0), display0);
 	h1: hexDisplay port map (oX_Cont(7 downto 4), display1);
-	h2: hexDisplay port map (oY_Cont(3 downto 0), display2);
-	h3: hexDisplay port map (oY_Cont(7 downto 4), display3);
-	h4: hexDisplay port map (oFrame_Cont(3 downto 0), display4);
-	h5: hexDisplay port map (oFrame_Cont(7 downto 4), display5);
+	h2: hexDisplay port map (oX_Cont(11 downto 8), display2);
+	h3: hexDisplay port map (oY_Cont(3 downto 0), display3);
+	h4: hexDisplay port map (oY_Cont(7 downto 4), display4);
+	h5: hexDisplay port map (oY_Cont(11 downto 8), display5);
 
 --	h0: hexDisplay port map (iData(31 downto 28), display0);
 --	h1: hexDisplay port map (iData(27 downto 24), display1);
