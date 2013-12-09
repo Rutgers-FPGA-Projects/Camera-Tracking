@@ -212,9 +212,13 @@ begin
 	begin
 		if reset ='0' then 
 			odata<=(others=> '0');
-		elsif rising_edge(CLOCK_50) then 
-			if data_ready_flag='1' then                                    --     data_ready_flag is a big problem
+		elsif rising_edge(CLOCK_50) then
+				
+			if data_ready_flag='1' then			--     data_ready_flag is a big problem
 				odata<=data_buffer;
+				if (state=idle) then 
+					odata<=(others =>'0');
+				end if;
 				--odata(23 downto 0) <= data_buffer(23 downto 0);
 				--if(state = idle) then 
 				--	odata(31 downto 24) <= "00010001";
