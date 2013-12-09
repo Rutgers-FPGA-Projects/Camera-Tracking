@@ -28,7 +28,8 @@ ENTITY OBJECT_TRACK IS
 END OBJECT_TRACK;
 
 ARCHITECTURE RTL OF OBJECT_TRACK IS
-
+	
+	-- DECLARE SPATIAL_FILTER COMPONENT
 	COMPONENT SPATIAL_FILTER IS 
 		GENERIC (	RES_WIDTH : INTEGER := 320;
 						RES_HEIGHT : INTEGER := 240);			
@@ -37,22 +38,26 @@ ARCHITECTURE RTL OF OBJECT_TRACK IS
 					EN	: IN STD_LOGIC;
 					PIXEL_IN : IN STD_LOGIC;
 					X_POS : OUT INTEGER;
-					Y_POS : OUT INTEGER; 	-- Send out its coordinates	
-					PIXEL_OUT : OUT STD_LOGIC);   	-- Send out processed pixel value					
+					Y_POS : OUT INTEGER; 		
+					PIXEL_OUT : OUT STD_LOGIC);   						
 	END COMPONENT;
 	
+	-- SIGNALS TO HOLD BORDER COORDINATES OF TARGET OBJECT
 	SIGNAL X_L : INTEGER := 0;
 	SIGNAL X_R : INTEGER := 0;
 	SIGNAL Y_T : INTEGER := 0;
 	SIGNAL Y_B : INTEGER := 0;
-	SIGNAL X_C : INTEGER := 0;
-	SIGNAL Y_C : INTEGER := 0;
-	SIGNAL X_COORD : INTEGER := 0;
-	SIGNAL Y_COORD : INTEGER := 0;
+		
+	-- SIGNALS TO HOLD CURRENT X,Y COORDINATES OF PIXEL 
+	SIGNAL X_COORD : INTEGER;
+	SIGNAL Y_COORD : INTEGER;
+	
+	-- SIGNAL TO HOLD VALUE OF PIXEL AFTER SPATIAL FILTERING
 	SIGNAL PIX_OUT : STD_LOGIC;
 
 BEGIN
-
+	
+	-- CREATE SPATIAL_FILTER COMPONENT
 	SF: SPATIAL_FILTER  
 	GENERIC MAP (	RES_WIDTH => 320,
 						RES_HEIGHT => 240)			
@@ -63,29 +68,22 @@ BEGIN
 					X_POS => X_COORD,
 					Y_POS => Y_COORD,	
 					PIXEL_OUT => PIX_OUT);
-
+	
 	PROCESS(CLK, RST)
 	BEGIN
-	
 		IF (RST ='0') THEN
 			X_L <= 0;
 			X_R <= 0;
 			Y_T <= 0;
 			Y_B <= 0;
-			X_C <= 0;
-			Y_C <= 0;
-			X_COORD <= 0;
-			Y_COORD <= 0;
-		END IF;
-		
+		ELSIF (RISING_EDGE(CLK)) THEN
 		-- Update coordinates of top, bottom, left, right most pixels each clock cycle
-		IF (RISING_EDGE(CLK)) THEN
 			IF (EN = '1') THEN
-				IF ((PIX_OUT = '1') AND ((Y_T = 0) OR (Y_COORD < Y_T))) THEN -- If Y_TOP has no value yet, top pixel not found
+				IF ((PIX_OUT = '1') AND ((Y_T = 0) OR (Y_COORD > Y_T))) THEN -- If Y_TOP has no value yet, top pixel not found
 					Y_T <= Y_COORD;
 				END IF;
 				
-				IF ((PIX_OUT = '1') AND ((Y_B = 0) OR (Y_COORD > Y_B))) THEN 
+				IF ((PIX_OUT = '1') AND ((Y_B = 0) OR (Y_COORD < Y_B))) THEN 
 					Y_B <= Y_COORD;
 				END IF;
 				
@@ -96,20 +94,16 @@ BEGIN
 				IF ((PIX_OUT = '1') AND ((X_R = 0) OR (X_COORD > X_R))) THEN
 					X_R <= X_COORD;
 				END IF;
-				
-				X_C <= (X_R-X_L)/2;
-				Y_C <= (Y_B-Y_T)/2;
-				
-			END IF;		
-		END IF;
-		
-		X_LEFT <= X_L;
-		X_RIGHT <= X_R;
-		Y_TOP <= Y_T;
-		Y_BOT <= Y_B;
-		X_CENTER <= X_C;
-		Y_CENTER <= Y_C;
-		PIXEL_OUT <= PIX_OUT;
-		
+			END IF;	
+		END IF;		
 	END PROCESS;
+		
+	X_LEFT <= X_L;
+	X_RIGHT <= X_R;
+	Y_TOP <= Y_T;
+	Y_BOT <= Y_B;
+	X_CENTER <= (X_R-X_L)/2;
+	Y_CENTER <= (Y_B-Y_T)/2;
+	PIXEL_OUT <= PIX_OUT;
+	
 END RTL;
