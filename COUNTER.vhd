@@ -13,35 +13,35 @@ ENTITY COUNTER IS
 	PORT (	CLK : IN STD_LOGIC;
 				RST : IN STD_LOGIC;
 				EN : IN STD_LOGIC;
-				W_LOC : OUT INTEGER;
-				H_LOC : OUT INTEGER);	
+				X_LOC : OUT INTEGER;
+				Y_LOC : OUT INTEGER);	
 END COUNTER;
 
 ARCHITECTURE COUNT OF COUNTER IS
 BEGIN
 	PROCESS(CLK, RST, EN)
 	
-	VARIABLE VW_LOC: INTEGER := 0;
-	VARIABLE VH_LOC: INTEGER := 0;
+	VARIABLE W_LOC: INTEGER := 0;
+	VARIABLE H_LOC: INTEGER := 0;
 	
 	BEGIN
 		IF (RST = '0') THEN
-			VW_LOC := -1;
-			VH_LOC := 0;
-			W_LOC <= 0;
-			H_LOC <= 0;
+			W_LOC := -1;
+			H_LOC := 0;
+			X_LOC <= 0;
+			Y_LOC <= 0;
 		ELSIF (RISING_EDGE(CLK)) THEN
 			IF (EN = '1') THEN
-				VW_LOC := VW_LOC + 1;
-				IF (VW_LOC = RES_WIDTH) THEN
-					VH_LOC := VH_LOC + 1;
-					VW_LOC := 0;
-					IF (VH_LOC = RES_HEIGHT) THEN
-						VH_LOC := 0;
+				W_LOC := W_LOC + 1;
+				IF (W_LOC = RES_WIDTH) THEN
+					H_LOC := H_LOC + 1;
+					W_LOC := 0;
+					IF (H_LOC = RES_HEIGHT) THEN
+						H_LOC := 0;
 					END IF;
 				END IF;
-				W_LOC <= VW_LOC;
-				H_LOC <= VH_LOC; 
+				X_LOC <= W_LOC;
+				Y_LOC <= H_LOC; 
 			END IF;
 		END IF;
 	END PROCESS;
