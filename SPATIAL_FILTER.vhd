@@ -7,6 +7,9 @@ LIBRARY IEEE;
 USE IEEE.STD_LOGIC_1164.ALL;
 USE IEEE.NUMERIC_STD.ALL;
 
+LIBRARY MYPACK;
+USE MYPACK.MY_PACKAGE.ALL;
+
 ENTITY SPATIAL_FILTER IS 
 	GENERIC (	RES_WIDTH : INTEGER := 320;
 					RES_HEIGHT : INTEGER := 240);			
@@ -112,7 +115,15 @@ BEGIN
 			-- Need to find way to add all '1's between X-4 and X+4
 			-- in SR2 through SR10 to give us sum of all '1's in a 9x9
 			-- neighborhood surrounding the pixel at X
-			IF (SR2(X-4)+SR2(X-3)+SR2(X-2)+SR2(X-1)+SR2(X)>75) THEN
+			IF (CountOnesFunc(SR2(X-4 DOWNTO X+4))+
+				 CountOnesFunc(SR3(X-4 DOWNTO X+4))+
+				 CountOnesFunc(SR4(X-4 DOWNTO X+4))+
+				 CountOnesFunc(SR5(X-4 DOWNTO X+4))+
+				 CountOnesFunc(SR6(X-4 DOWNTO X+4))+
+				 CountOnesFunc(SR7(X-4 DOWNTO X+4))+
+				 CountOnesFunc(SR8(X-4 DOWNTO X+4))+
+				 CountOnesFunc(SR9(X-4 DOWNTO X+4))+
+				 CountOnesFunc(SR10(X-4 DOWNTO X+4)) > 75) THEN
 				SR6(X) <= '1';
 			ELSE
 				SR6(X) <= '0';
