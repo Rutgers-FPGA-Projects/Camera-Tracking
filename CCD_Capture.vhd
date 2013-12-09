@@ -57,7 +57,7 @@ begin
 			FVAL <= iFVAL;
 			LVAL <= iLVAL;
 			
-			currentState <= nextState;
+			
 		end if;
 	end process;
 	

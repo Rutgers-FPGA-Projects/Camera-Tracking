@@ -246,13 +246,17 @@ begin
 	);
 	
 	
-	process(D5M_PIXLCLK) begin
-		if(rising_edge(D5M_PIXLCLK)) then
+--	process(D5M_PIXLCLK) begin
+--		if(falling_edge(D5M_PIXLCLK)) then
+--			rCCD_DATA <= D5M_D;
+--			rCCD_FVAL <= D5M_LVAL;
+--			rCCD_LVAL <= D5M_LVAL;
+--		end if;
+--	end process;
+	
 			rCCD_DATA <= D5M_D;
 			rCCD_FVAL <= D5M_LVAL;
 			rCCD_LVAL <= D5M_LVAL;
-		end if;
-	end process;
 	
 	
 	process (CLOCK_50)
