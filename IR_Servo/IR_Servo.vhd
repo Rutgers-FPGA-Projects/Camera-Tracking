@@ -35,7 +35,7 @@ architecture behav of IR_Servo is
 	end component;
 	
 	signal irData: std_logic_vector(31 downto 0);
-	signal controlAngle: integer range 0 to 200;
+	signal controlAngle: integer range 0 to 200 :=100;
 begin 
 	infrared: IR_S port map(IRDA_RXD, key(0),CLOCK_50,ready,HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, irData);
 	 
@@ -46,12 +46,12 @@ begin
 					LEDR(2)<='1';
 					LEDR(1)<='0';
 					LEDR(0)<='0';
-					controlAngle<=controlAngle+1;
+					controlAngle<=controlAngle+11;  -- clockwise around 10 degrees.
 			 when "00011110"=>
 					LEDR(2)<='0';
 					LEDR(1)<='1';
 					LEDR(0)<='0';
-					controlAngle<=controlAngle-1;
+					controlAngle<=controlAngle-11;  -- counter-clockwise around 10 degrees.
 			 when others =>
 					LEDR(2)<='0';
 					LEDR(1)<='0';
