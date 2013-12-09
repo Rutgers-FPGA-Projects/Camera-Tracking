@@ -16,9 +16,11 @@ ENTITY SPATIAL_FILTER IS
 	PORT (	CLK : IN STD_LOGIC; 
 				RST : IN STD_LOGIC;
 				EN	: IN STD_LOGIC;
-				X_POS, Y_POS : IN INTEGER; 	-- Send out its coordinates	
 				PIXEL_IN : IN STD_LOGIC;
+				X_POS : OUT INTEGER; 
+				Y_POS : OUT INTEGER; 	-- Send out its coordinates	
 				PIXEL_OUT : OUT STD_LOGIC);   	-- Send out processed pixel value
+				
 				
 END SPATIAL_FILTER;
 
@@ -71,9 +73,6 @@ BEGIN
 					SHIFT_IN => SR_IN,
 					SHIFT_OUT => SR_OUT,
 					SR_DATA => SR1);
-	
-	X <= X_POS;
-	Y <= Y_POS;
 	
 	PROCESS(CLK, RST)
 	BEGIN
@@ -130,6 +129,10 @@ BEGIN
 			END IF;
 			SR_OUT <= SR6(X);
 		END IF;
+		
+		X_POS <= X;
+		Y_POS <= Y;
+		
 	END PROCESS;
 END RTL;
 
