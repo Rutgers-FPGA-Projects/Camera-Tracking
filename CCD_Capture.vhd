@@ -31,15 +31,6 @@ end ;
 
 architecture behavior of CCD_Capture is 
 
-type states is (NotFrame, PreLine,IsLine);
-
--- declare encoding of states;
-	attribute syn_encoding : string;
-	attribute syn_encoding of states : type is "00 01 10";
-	
--- two regesters of type states;
-signal CurrentState,NextState: states;
-
 signal ValidData: STD_LOGIC;
 signal mFrameCnt: integer ; --range 0 to 56000 :0;
 signal xcnt: integer := 0;
@@ -73,12 +64,13 @@ begin
 	
 	process(iCLK)begin -- this is the frame valid signal
 		if(falling_edge(iCLK))then
+			oDATA <= DATA;   -- 
 			if(iRST = '0')then
 				xcnt <= 0;
 				ycnt <= 0;
 			elsif(ValidData = '1')then
 				blankTime <= 0;
-				oDATA <= DATA;
+				
 				if(xcnt > 0)then
 					xcnt <= xcnt -1;
 				else	
@@ -102,7 +94,6 @@ begin
 		
 		end if; 
 	end process;
-	
 	
 	ValidData <= FVAL AND LVAL;  -- is the data valid?
 	oDVAL <= outofcontrol;--ValidData;

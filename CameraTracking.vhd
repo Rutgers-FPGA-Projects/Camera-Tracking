@@ -9,6 +9,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+use IEEE.NUMERIC_BIT.all;
 
 entity CameraTracking is 
 	port(	VGA_R,VGA_G,VGA_B: out STD_logic_vector(7 downto 0);
@@ -104,6 +105,7 @@ architecture behavior of CameraTracking is
 					oY_Cont: out STD_LOGIC_VECTOR(15 downto 0);
 					iX_Cont: in STD_LOGIC_VECTOR(15 downto 0);
 					iY_Cont: in STD_LOGIC_VECTOR(15 downto 0);
+					iCLK: in STD_LOGIC;
 					iDATA: in STD_lOGIC_VECTOR(11 downto 0));
 	end component ;
 	
@@ -164,6 +166,8 @@ architecture behavior of CameraTracking is
 	signal Red, Green, Blue: STD_LOGIC_VECTOR(11 downto 0);
 	signal RGB_DVAL: STD_LOGIC;
 	
+	signal InRawDATA: STD_LOGIC_VECTOR(11 downto 0);
+	
 begin
 	
 	LEDG(0) <= rst; --clock debuging 
@@ -195,6 +199,15 @@ begin
 					);
 	
 	
+	process(SW(17 downto 16))begin
+		case SW(17 downto 16) is
+			when "00" => InRawDATA <= oDATA;
+			when "01" => InRawDATA <= (oDATA(10 downto 0) & '1') or (oDATA(11) & "00000000000");  -- if MSB is set then deal with it the best we can
+			when "10" => InRawDATA <= oDATA(9 downto 0) & "11";
+			when "11" => InRawDATA <= oDATA(8 downto 0) & "111";
+		end case;
+	end process;
+	
 	BtoRGB: BayerToRGB port map(
 					oDATA => pixel,  -- 5 bit RGB
 					oDVAL => RGB_DVAL,
@@ -202,7 +215,8 @@ begin
 					oY_Cont => RGB_Y,
 					iX_Cont => oX_Cont,
 					iY_Cont => oY_Cont,
-					iDATA => oDATA 
+					iCLK => D5M_PIXLCLK,
+					iDATA => InRawDATA 
 					);
 	
 	
@@ -215,7 +229,7 @@ begin
 		rdclock	 => clock_25MHz,
 		wraddress	 => RGB_X(11 downto 3) & RGB_Y(10 downto 3), --VGAMemWriteAddress,
 		wrclock	 => D5M_PIXLCLK,
-		wren	 => '1', --VGAMemWriteEnable,
+		wren	 => '1' and not KEY(3) , --VGAMemWriteEnable,
 		q	 => VGAMemReadData 
 	);
 	
@@ -322,7 +336,7 @@ begin
 		VGA_R(7 downto 3) <= VGAMemReadData(14 downto 10);
 		VGA_G(7 downto 3) <= VGAMemReadData(9 downto 5);
 		VGA_B(7 downto 3) <= VGAMemReadData(4 downto 0);
-		VGA_B(7 downto 3) <= "00000";
+		--VGA_B(7 downto 3) <= "00000";
 		VGA_R(2 downto 0) <= "000"; 
 		VGA_G(2 downto 0) <= "000";
 		VGA_B(2 downto 0) <= "000";
