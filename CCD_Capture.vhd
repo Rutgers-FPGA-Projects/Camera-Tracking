@@ -62,15 +62,13 @@ begin
 	end process;
 	
 	
-	process(iCLK)begin -- this is the frame valid signal
-		if(falling_edge(iCLK))then
-			oDATA <= DATA;   -- 
+	process(iCLK)begin -- run for each pixel
+		if(falling_edge(iCLK))then 
+			oDATA <= DATA;   
 			if(iRST = '0')then
 				xcnt <= 0;
 				ycnt <= 0;
 			elsif(ValidData = '1')then
-				blankTime <= 0;
-				
 				if(xcnt > 0)then
 					xcnt <= xcnt -1;
 				else	
@@ -81,22 +79,27 @@ begin
 						ycnt <= 1943;
 					end if;
 				end if;
-				
-			elsif(FVAL = '0' and LVAL = '0') then -- still valid just waiting for the next line
-				if(blankTime > 25 * 2591)then
-					xcnt <= 0;
-					ycnt <= 0;
-					blankTime <= 0;
-				else
-					blankTime <= blankTime + 1;
-				end if;
-			end if;
-		
+			elsif(LVAL = '0')then -- End of line
+				xcnt <= 0;
+			end if;			
 		end if; 
 	end process;
 	
+	
+--			elsif(FVAL = '0' and LVAL = '0') then -- still valid just waiting for the next line
+--				if(blankTime > 25 * 2091)then
+--					xcnt <= 0;
+--					ycnt <= 0;
+--					blankTime <= 0;
+--				else
+--					blankTime <= blankTime + 1;
+--				end if;
+--			end if;
+		
+
+	
 	ValidData <= FVAL AND LVAL;  -- is the data valid?
-	oDVAL <= outofcontrol;--ValidData;
+	oDVAL <= ValidData;
 	
 	oFrame_Cont <= std_logic_vector(to_unsigned(mFrameCnt, 32));
 	oX_Cont <= std_logic_vector(to_unsigned(xcnt, 16));

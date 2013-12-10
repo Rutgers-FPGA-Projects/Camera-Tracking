@@ -58,23 +58,34 @@ architecture behavior of CameraTracking is
 		q		: OUT STD_LOGIC_VECTOR (14 DOWNTO 0));
 	END component;
 		
-	component servo is 
-		port(clk: in STD_LOGIC;
-			Angle: in integer := 100;   -- 1.5 ms
-			servo_ctr: out STD_LOGIC
+--	component servo is 
+--		port(clk: in STD_LOGIC;
+--			Angle: in integer := 100;   -- 1.5 ms
+--			servo_ctr: out STD_LOGIC
+--		);
+--	end component;
+--	
+	
+	component IR_Servo is port(
+		IRDA_RXD: in std_logic;
+		key: in std_logic_vector(0 downto 0);
+		CLOCK_50	:IN STD_LOGIC;
+		HEX0, HEX1, HEX2, HEX3, HEX4, HEX5: OUT STD_LOGIC_VECTOR(0 TO 6);	
+		EXT_IO: out std_LOGIC_VECTOR(2 downto 0);
+		LEDR: out std_LOGIC_VECTOR(2 downto 0)
 		);
 	end component;
-	
-	component ir_receiver is port ( 
-			iIRDA: in std_logic;
-			reset: in std_logic;
-			clk_50: in std_logic;
-			--Display the information about CUSTOM CODE bits __HEX7-HEX4
-			--and KEY CODE bits __HEX3-HEX0
-			data_ready : out std_logic ;
-			oData: out std_logic_vector(31 downto 0)
-			);
-	end component;
+
+--	component ir_receiver is port ( 
+--			iIRDA: in std_logic;
+--			reset: in std_logic;
+--			clk_50: in std_logic;
+--			--Display the information about CUSTOM CODE bits __HEX7-HEX4
+--			--and KEY CODE bits __HEX3-HEX0
+--			data_ready : out std_logic ;
+--			oData: out std_logic_vector(31 downto 0)
+--			);
+--	end component;
 	
 	component hexDisplay is port (
 		S: in std_logic_vector(3 downto 0);  -- S is an intermediate signal (NOT A PHYSICAL INPUT)
@@ -96,7 +107,7 @@ architecture behavior of CameraTracking is
 					iCLK: in STD_LOGIC;
 					iRST: in STD_LOGIC
 					);
-		end component;
+	end component;
 	
 	component BayerToRGB is port(
 					oDATA: out STD_lOGIC_VECTOR(14 downto 0);  -- 5 bit RGB
@@ -181,7 +192,7 @@ begin
 	D5M_TRIGGER	<= '1';  -- TRIGGER
 	D5M_RESET_N	<= KEY(0);
 	
-	LEDR(15 downto 0) <= oY_Cont;
+	--LEDR(15 downto 0) <= oY_Cont;
 	
 	Camera: CCD_Capture port map(
 					oDATA => oDATA,
@@ -208,6 +219,7 @@ begin
 		end case;
 	end process;
 	
+	
 	BtoRGB: BayerToRGB port map(
 					oDATA => pixel,  -- 5 bit RGB
 					oDVAL => RGB_DVAL,
@@ -218,18 +230,20 @@ begin
 					iCLK => D5M_PIXLCLK,
 					iDATA => InRawDATA 
 					);
-	
-	
-	
+
+				---Red(6 downto 2) & Green(6 downto 2) & Blue(6 downto 2), --VGAMemWriteData,
+			
+			
 	VGAMemWriteAddress <=  VGA_HorAddress(9 downto 1) & VGA_VertAddress(8 downto 1);
 	
+
 	TwoPortRam_inst : TwoPortRam PORT MAP (
-		data	 => pixel, ---Red(6 downto 2) & Green(6 downto 2) & Blue(6 downto 2), --VGAMemWriteData,
+		data	 => pixel, 
 		rdaddress	 => VGAMemReadAddress,
 		rdclock	 => clock_25MHz,
 		wraddress	 => RGB_X(11 downto 3) & RGB_Y(10 downto 3), --VGAMemWriteAddress,
 		wrclock	 => D5M_PIXLCLK,
-		wren	 => '1' and not KEY(3) , --VGAMemWriteEnable,
+		wren	 => '1' and KEY(3) , 
 		q	 => VGAMemReadData 
 	);
 	
@@ -246,17 +260,9 @@ begin
 	);
 	
 	
---	process(D5M_PIXLCLK) begin
---		if(falling_edge(D5M_PIXLCLK)) then
---			rCCD_DATA <= D5M_D;
---			rCCD_FVAL <= D5M_LVAL;
---			rCCD_LVAL <= D5M_LVAL;
---		end if;
---	end process;
-	
-			rCCD_DATA <= D5M_D;
-			rCCD_FVAL <= D5M_LVAL;
-			rCCD_LVAL <= D5M_LVAL;
+	rCCD_DATA <= D5M_D;
+	rCCD_FVAL <= D5M_LVAL;
+	rCCD_LVAL <= D5M_LVAL;
 	
 	
 	process (CLOCK_50)
@@ -266,21 +272,35 @@ begin
 		end if;
 	end process;
 	
-	
-	-- pan servo
-	Servo_0 : servo port map (
-		clk => CLOCK_50,
-		Angle => 100,
-		servo_ctr => EXT_IO(0)
-	);
-	
-	-- vertical servo
-	Servo_1 : servo port map (
-		clk => CLOCK_50,
-		Angle => 100,
-		servo_ctr => EXT_IO(1)
-	);
-	
+--	
+--	-- pan servo
+--	Servo_0 : servo port map (
+--		clk => CLOCK_50,
+--		Angle => 100,
+--		servo_ctr => EXT_IO(0)
+--	);
+--	
+--	-- vertical servo
+--	Servo_1 : servo port map (
+--		clk => CLOCK_50,
+--		Angle => 100,
+--		servo_ctr => EXT_IO(1)
+--	);
+--	
+	Cont: IR_Servo port map(
+		IRDA_RXD => IRDA_RXD,
+		key => KEY(0 downto 0), 
+		CLOCK_50 => clock_50,
+		HEX0 => HEX0,
+		HEX1 => HEX1,
+		HEX2 => HEX2,
+		HEX3 => HEX3,
+		HEX4 => HEX4,
+		HEX5 => HEX5,
+		EXT_IO => EXT_IO(2 downto 0),
+		LEDR => LEDR(2 downto 0));
+
+
 	
 	vga_inst: vga_driver port map(
 		VertAddress => VGA_VertAddress,
@@ -295,81 +315,22 @@ begin
 		);
 	
 	
-	mup <= KEY(0);
-	mdown <= KEY(1);
-	mright <= KEY(2);
-	mleft <= KEY(3);
-	
-	
-	process (mup)
-	begin
-		if(rising_edge(mup))then
-			verpos <= verpos + 1;
-		end if;
-	end process;
 
---	process (mdown)
---	begin
---		if(rising_edge(mdown))then
---			verpos <= verpos - 1;
---		end if;
---	end process;
 
-	process (mright)
-	begin
-		if(rising_edge(mright))then
-			horpos <= horpos + 1;
-		end if;
-	end process;
-
---	process (mleft)
---	begin
---		if(rising_edge(mleft))then
---			horpos <= horpos - 1;
---		end if;
---	end process;
-	
-		
-	
 	
 	-- copy the video memory data to the VGA out lines for the corisponding address
 	process (VGA_VertAddress,VGA_HorAddress)
 	begin
 		VGAMemReadAddress <= VGA_HorAddress(9 downto 1) & VGA_VertAddress(8 downto 1);
-		--VGA_R(7 downto 3) <= VGAMemReadData(14 downto 10); -- conect the data read from the	two port mem to the correct color 
 		VGA_R(7 downto 3) <= VGAMemReadData(14 downto 10);
 		VGA_G(7 downto 3) <= VGAMemReadData(9 downto 5);
 		VGA_B(7 downto 3) <= VGAMemReadData(4 downto 0);
-		--VGA_B(7 downto 3) <= "00000";
-		VGA_R(2 downto 0) <= "000"; 
-		VGA_G(2 downto 0) <= "000";
-		VGA_B(2 downto 0) <= "000";
+		VGA_R(2 downto 0) <= "111"; 
+		VGA_G(2 downto 0) <= "111";
+		VGA_B(2 downto 0) <= "111";
 	end process;
 	
-	-- Hook up the IR conections 
---	I_r: ir_receiver port map(IRDA_RXD,KEY(0),CLOCK_50,IRdata_ready,iData);
 	
-	
-	h0: hexDisplay port map (oX_Cont(3 downto 0), display0);
-	h1: hexDisplay port map (oX_Cont(7 downto 4), display1);
-	h2: hexDisplay port map (oX_Cont(11 downto 8), display2);
-	h3: hexDisplay port map (oY_Cont(3 downto 0), display3);
-	h4: hexDisplay port map (oY_Cont(7 downto 4), display4);
-	h5: hexDisplay port map (oY_Cont(11 downto 8), display5);
 
---	h0: hexDisplay port map (iData(31 downto 28), display0);
---	h1: hexDisplay port map (iData(27 downto 24), display1);
---	h2: hexDisplay port map (iData(23 downto 20), display2);
---	h3: hexDisplay port map (iData(19 downto 16), display3);
---	h4: hexDisplay port map (iData(15 downto 12), display4);
---	h5: hexDisplay port map (iData(11 downto 8), display5);
---	
-	HEX0<=display0;
-	HEX1<=display1;
-	HEX2<=display2;
-	HEX3<=display3;
-	HEX4<=display4;
-	HEX5<=display5;
-	
 	
 end behavior;

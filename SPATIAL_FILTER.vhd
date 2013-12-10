@@ -72,11 +72,12 @@ BEGIN
 					SHIFT_EN => EN,
 					SHIFT_IN => SR_IN,
 					SHIFT_OUT => SR_OUT,
-					SR_DATA => SR1); 
+					SR_DATA => SR1);
 	
 	PROCESS(CLK, RST)
 	BEGIN
 		IF (RST = '0') THEN
+			SR1 <= (OTHERS => '0');
 			SR2 <= (OTHERS => '0');
 			SR3 <= (OTHERS => '0');
 			SR4 <= (OTHERS => '0');
@@ -86,7 +87,9 @@ BEGIN
 			SR8 <= (OTHERS => '0');
 			SR9 <= (OTHERS => '0');
 			SR10 <= (OTHERS => '0');
-		ELSIF (RISING_EDGE(CLK)) THEN
+		END IF;
+		
+		IF (RISING_EDGE(CLK)) THEN
 			IF (EN = '1') THEN		
 				IF ((X < RES_WIDTH-1) AND (Y < RES_HEIGHT-1)) THEN -- if pixels still within image frame	
 					SR_IN <= PIXEL_IN;
@@ -103,28 +106,33 @@ BEGIN
 					SR9 <= SR8;
 					SR10 <= SR9;
 				END IF;
-				
-				IF (CountOnesFunc(SR2(X-4 DOWNTO X+4))+
-					 CountOnesFunc(SR3(X-4 DOWNTO X+4))+
-					 CountOnesFunc(SR4(X-4 DOWNTO X+4))+
-					 CountOnesFunc(SR5(X-4 DOWNTO X+4))+
-					 CountOnesFunc(SR6(X-4 DOWNTO X+4))+
-					 CountOnesFunc(SR7(X-4 DOWNTO X+4))+
-					 CountOnesFunc(SR8(X-4 DOWNTO X+4))+
-					 CountOnesFunc(SR9(X-4 DOWNTO X+4))+
-					 CountOnesFunc(SR10(X-4 DOWNTO X+4)) > 75) THEN
-					SR6(X) <= '1';
-				ELSE
-					SR6(X) <= '0';
-				END IF;
-				--SR_OUT <= SR6(X); 
 			END IF;
 		END IF;
+		
+		IF (RISING_EDGE(CLK)) THEN
+		
+			-- Need to find way to add all '1's between X-4 and X+4
+			-- in SR2 through SR10 to give us sum of all '1's in a 9x9
+			-- neighborhood surrounding the pixel at X
+			IF (CountOnesFunc(SR2(X-4 DOWNTO X+4))+
+				 CountOnesFunc(SR3(X-4 DOWNTO X+4))+
+				 CountOnesFunc(SR4(X-4 DOWNTO X+4))+
+				 CountOnesFunc(SR5(X-4 DOWNTO X+4))+
+				 CountOnesFunc(SR6(X-4 DOWNTO X+4))+
+				 CountOnesFunc(SR7(X-4 DOWNTO X+4))+
+				 CountOnesFunc(SR8(X-4 DOWNTO X+4))+
+				 CountOnesFunc(SR9(X-4 DOWNTO X+4))+
+				 CountOnesFunc(SR10(X-4 DOWNTO X+4)) > 75) THEN
+				SR6(X) <= '1';
+			ELSE
+				SR6(X) <= '0';
+			END IF;
+			SR_OUT <= SR6(X);
+		END IF;
+		
+		X_POS <= X;
+		Y_POS <= Y;
+		
 	END PROCESS;
-	
-	X_POS <= X;
-	Y_POS <= Y;
-	PIXEL_OUT <= SR_OUT;
-	
 END RTL;
 

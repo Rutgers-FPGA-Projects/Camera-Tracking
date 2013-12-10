@@ -23,10 +23,10 @@ END SHIFT_REGISTER;
 
 ARCHITECTURE RTL OF SHIFT_REGISTER IS
 
-	-- TYPE SR_LENGTH IS ARRAY (RES_WIDTH-1 DOWNTO 0) OF STD_LOGIC; -- Allows for different data widths
+	TYPE SR_LENGTH IS ARRAY (RES_WIDTH-1 DOWNTO 0) OF STD_LOGIC; 
 	
-	SIGNAL SHIFT_REG : STD_LOGIC_VECTOR(RES_WIDTH-1 DOWNTO 0); -- Create Shift Register to hold binary values of image width pixels
-											
+	SIGNAL SHIFT_REG : SR_LENGTH; -- Create Shift Register to hold binary values of image width pixels
+
 BEGIN
 	PROCESS(CLK)
 	BEGIN
@@ -36,12 +36,11 @@ BEGIN
 				SHIFT_REG(RES_WIDTH-1 DOWNTO 1) <= SHIFT_REG(RES_WIDTH-2 DOWNTO 0); -- Shift Data by 1
 				
 				SHIFT_REG(0) <= SHIFT_IN; -- New data
-				SHIFT_OUT <= SHIFT_REG(RES_WIDTH-1); -- Output data from last stage
 				
-			END IF;	
+			END IF;
 		END IF;
 	END PROCESS;
 	
-	SR_DATA <= SHIFT_REG;
+	SHIFT_OUT <= SHIFT_REG(RES_WIDTH-1); -- Output data from last stage
 	
 END RTL;
